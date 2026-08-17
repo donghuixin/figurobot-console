@@ -117,6 +117,7 @@
   }
   .btn.primary:hover { filter: brightness(1.08); }
   .btn.danger { background: rgba(251,113,133,0.14); border-color: rgba(251,113,133,0.34); color: #ffb3c0; }
+  .btn.quiet { background: rgba(52,211,153,0.12); border-color: rgba(52,211,153,0.38); color: #86efac; }
   .btn.ghost { background: transparent; border-color: var(--stroke); color: var(--text-dim); }
   .btn:disabled { opacity: .45; cursor: not-allowed; pointer-events: none; }
   .btn svg { flex-shrink: 0; }
@@ -313,6 +314,11 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>姿态复位
         </button>
       </div>
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn" id="btnStandby" style="flex:1" title="切换自动待机动作：关闭后机器人上电不再自动乱动">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="9" y1="12" x2="15" y2="12"/></svg><span id="btnStandbyText">待机动作</span>
+        </button>
+      </div>
       <div class="hint" id="poseHint">安全范围约 4.4°–316.5°（对应限位 50–3600 tick）。</div>
     </div>
   </aside>
@@ -413,6 +419,7 @@ async function connectBridge() {
     else { $("lblRobot").textContent = "机器人离线"; setLed("ledRobot", false); }
     log("已连接桥接服务 " + API, "ok");
     await loadMotions();
+    await refreshStandby();
   } catch (e) {
     setLed("ledBridge", false); $("lblBridge").textContent = "桥接未连接";
     $("bridgeHint").textContent = "连接失败：请确认 robot_bridge.py 已启动（python robot_bridge.py）";
@@ -428,6 +435,49 @@ async function loadMotions() {
     renderChips(); renderMotions();
     log(`已加载 ${motions.length} 个动作`, "ok");
   } catch (e) { log("加载动作失败: " + e.message, "err"); }
+}
+
+// ---------- 待机（自动动作）开关 ----------
+let standbyQuiet = null;  // true=安静待机（不乱动） false=自动待机
+
+function renderStandby() {
+  const btn = $("btnStandby"), txt = $("btnStandbyText");
+  if (standbyQuiet === null) { txt.textContent = "待机动作"; btn.classList.remove("quiet"); return; }
+  if (standbyQuiet) {
+    txt.textContent = "待机：安静";
+    btn.classList.add("quiet");
+    btn.title = "已关闭自动待机动作，机器人上电不会乱动。点击恢复自动待机。";
+  } else {
+    txt.textContent = "待机：自动";
+    btn.classList.remove("quiet");
+    btn.title = "自动待机已开启（5 秒无命令会随机播待机动作）。点击进入安静待机。";
+  }
+}
+
+async function refreshStandby() {
+  try {
+    const d = await api("/api/standby");
+    standbyQuiet = !!d.quiet;
+    renderStandby();
+  } catch (e) { standbyQuiet = null; renderStandby(); }
+}
+
+async function toggleStandby() {
+  const btn = $("btnStandby");
+  btn.disabled = true;
+  try {
+    const next = !standbyQuiet;
+    const d = await api("/api/standby", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quiet: next }) });
+    standbyQuiet = !!d.quiet;
+    renderStandby();
+    log(next ? "已进入安静待机：自动待机动作关闭，机器人不再乱动" : "已恢复自动待机动作", "ok");
+    toast(next ? "已进入安静待机" : "已恢复自动待机");
+  } catch (e) {
+    log("切换待机失败: " + e.message, "err");
+    toast("切换失败");
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 function renderChips() {
@@ -605,6 +655,7 @@ $("btnJointScan").addEventListener("click", scanJoints);
 $("btnJointDisable").addEventListener("click", () => toast("断电功能需串口空闲"));
 $("btnReadPose").addEventListener("click", readPose);
 $("btnPoseReset").addEventListener("click", poseReset);
+$("btnStandby").addEventListener("click", toggleStandby);
 $("btnClearLog").addEventListener("click", () => $("logBox").innerHTML = "");
 $("searchBox").addEventListener("input", renderMotions);
 $("bridgeUrl").addEventListener("keydown", e => { if (e.key === "Enter") connectBridge(); });
