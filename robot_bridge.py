@@ -67,7 +67,7 @@ POSITION_LENGTH = 4     # 位置寄存器 4 字节（Dynamixel X 系列标准）
 MIN_GOAL_TICK = 50      # 软件限位下界（约 4.39°）
 MAX_GOAL_TICK = 3600    # 软件限位上界（约 316.48°）
 SERIAL_BAUD = 1000000
-# Dynamixel 错误码 → 可读描述（来自官方协议手册 v2）
+# 官方 demo servo_figurobot_v2.py 的 _ERROR_NAMES 只定义 0x01–0x07（自定义枚举）
 DXL_ERROR_NAMES = {
     0x00: "正常",
     0x01: "结果失败",
@@ -77,12 +77,9 @@ DXL_ERROR_NAMES = {
     0x05: "数据长度错误",
     0x06: "数据限制错误",
     0x07: "访问错误",
-    0x08: "告警动作",
-    0x10: "输入电压错误",   # ← 本次诊断的关键
-    0x20: "过温",
-    0x40: "过载",
-    0x80: "超时",
 }
+# 注意：0x10 官方未定义（实测 27 舵机会集体报，但能正常驱动，含义待官方确认），
+# 不要臆断为「电压错误」。未收录的错误码统一显示「未定义(0xXX)」。
 # 全部关节 ID（缺 18，来自 motor.json id_action_list）
 SERVO_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
              19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
@@ -166,28 +163,54 @@ class Robot:
 
     # ---- 高层动作控制（通过 motion_main 的 Unix socket） ----
     def _socket_send(self, payload):
-        """通过 /tmp/motion_main_socket 发送命令。base64 编码传代码，绕开 shell 引号问题。"""
+        """通过 /tmp/motion_main_socket 发送命令，并读取 motion_main 的响应。
+
+        base64 编码传代码（多行，逐语句换行），绕开 shell 引号问题。
+        返回 subprocess 结果，附加属性 `.resp`（motion_main 返回的文本，无响应则为空）。
+        """
         py = (
-            "import socket;"
-            "s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM);"
-            "s.settimeout(2);"
-            "s.connect('/tmp/motion_main_socket');"
-            f"s.sendall({payload!r}.encode('utf-8')+b'\\n');"
-            "s.close()"
+            "import socket,time\n"
+            "s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM)\n"
+            "s.settimeout(2)\n"
+            "s.connect('/tmp/motion_main_socket')\n"
+            f"s.sendall({payload!r}.encode('utf-8')+b'\\n')\n"
+            "time.sleep(0.35)\n"
+            "s.settimeout(0.8)\n"
+            "try:\n"
+            "    d=s.recv(65536)\n"
+            "    print('RESP:'+d.decode('utf-8','replace'))\n"
+            "except Exception:\n"
+            "    print('RESP:')\n"
+            "s.close()\n"
         )
         b64 = base64.b64encode(py.encode("utf-8")).decode("ascii")
-        return self.shell(f"echo {b64} | base64 -d | python3", timeout=8)
+        r = self.shell(f"echo {b64} | base64 -d | python3", timeout=10)
+        resp = ""
+        for line in (r.stdout or "").splitlines():
+            if line.startswith("RESP:"):
+                resp = line[5:]
+        r.resp = resp
+        return r
 
     def play(self, action, frame_rate=30):
         """播放动作。motion_main 要求 `:Play <动作名> <帧率>`（3 段，缺帧率会被静默忽略）。"""
-        return self._socket_send(f":Play {action} {int(frame_rate)}")
+        cmd = f":Play {action} {int(frame_rate)}"
+        r = self._socket_send(cmd)
+        r.cmd = cmd
+        return r
 
     def play_idle(self, action, frame_rate=30):
         """播放待机动作。格式同 :Play，需 3 段。"""
-        return self._socket_send(f":PlayIdle {action} {int(frame_rate)}")
+        cmd = f":PlayIdle {action} {int(frame_rate)}"
+        r = self._socket_send(cmd)
+        r.cmd = cmd
+        return r
 
     def reset(self):
-        return self._socket_send(":Motion_Reset")
+        cmd = ":Motion_Reset"
+        r = self._socket_send(cmd)
+        r.cmd = cmd
+        return r
 
     def list_motions(self):
         r = self.shell("cat /sdcard/.config/Figurobot/data/motionList.json", timeout=8)
@@ -435,63 +458,57 @@ class Robot:
     def assess_safety(pose):
         """判断上电是否会损伤机器人。
 
-        返回 {level, level_text, issues, online_count, total, voltage_err_count, ...}。
-        level: safe / warn / danger / unknown / power
+        返回 {level, level_text, issues, online_count, total, err_joints, ...}。
+        level: safe / warn / danger / unknown
         判断标准（对齐软件限位 [MIN_GOAL_TICK, MAX_GOAL_TICK]）：
           - 所有关节在线、err==0 且角度在 [4.39°, 316.48°] 内 → safe
-          - 有离线关节（读不到）→ warn（总线可能未连接）
+          - 有离线关节（读不到）→ warn
           - 有角度超出限位 → danger（该关节处于极限位，上电可能损伤）
-          - 全部/大部分在线但错误码=0x10(输入电压错误) → power（电源异常）
+          - 在线但报错误码（含 0x10）→ warn（错误码官方未定义，含义待确认）
         """
         joints = pose.get("joints", {})
         total = len(joints)
         online = [j for j in joints.values() if j.get("online")]
         offline = [k for k, j in joints.items() if not j.get("online")]
-        voltage_err = [k for k, j in joints.items()
-                       if j.get("online") and j.get("error_code") == 0x10]
-        other_err = [k for k, j in joints.items()
-                     if j.get("online") and j.get("error_code") not in (None, 0, 0x10)]
+        # 在线但报错误码的关节（error_code 非 0）
+        err_joints = [k for k, j in joints.items()
+                      if j.get("online") and j.get("error_code") not in (None, 0)]
         min_deg = MIN_GOAL_TICK * DEG_MAX / POS_MAX   # ≈ 4.39°
         max_deg = MAX_GOAL_TICK * DEG_MAX / POS_MAX   # ≈ 316.48°
         out_of_range = []
         for k, j in joints.items():
-            if j.get("online") and j.get("angle") is not None and j.get("error_code") in (None, 0):
+            if j.get("online") and j.get("error_code") in (None, 0) and j.get("angle") is not None:
                 a = j["angle"]
                 if a < min_deg or a > max_deg:
                     out_of_range.append((k, a))
         issues = []
-        if voltage_err:
-            issues.append(f"有 {len(voltage_err)} 个关节报告「输入电压错误」—— 24V 母线电压异常，请检查电源/电池/连接")
-        if other_err:
-            issues.append(f"有 {len(other_err)} 个关节报告其他错误（非电压错误）")
+        if err_joints:
+            # 统计错误码分布
+            err_codes = {}
+            for k in err_joints:
+                c = joints[k].get("error_code")
+                err_codes[c] = err_codes.get(c, 0) + 1
+            desc = "、".join(f"{n} 个报 0x{c:02X}" for c, n in sorted(err_codes.items()))
+            issues.append(f"有 {len(err_joints)} 个关节报告错误码（{desc}）。官方文档未定义这些错误码，含义待官方确认，不影响驱动")
         if out_of_range:
             issues.append("有 %d 个关节角度超出安全范围（限位附近）" % len(out_of_range))
         if offline:
-            issues.append("有 %d 个关节离线/未响应（总线可能未连接或该 ID 未接电机）" % len(offline))
+            issues.append("有 %d 个关节离线/未响应（该 ID 未接电机或总线异常）" % len(offline))
         if total == 0:
             return {"level": "unknown", "level_text": "无法读取", "issues": ["未能读取任何关节"],
                     "online_count": 0, "total": 0, "out_of_range": out_of_range,
-                    "offline": offline, "voltage_err": voltage_err, "other_err": other_err}
-        # 优先级：电源 > 限位 > 离线 > 正常
-        if voltage_err and len(voltage_err) >= max(1, len(online) // 2):
-            return {"level": "power", "level_text": "电源异常：所有舵机报电压错误",
-                    "issues": issues, "online_count": len(online), "total": total,
-                    "out_of_range": out_of_range, "offline": offline,
-                    "voltage_err": voltage_err, "other_err": other_err}
+                    "offline": offline, "err_joints": err_joints}
         if out_of_range:
             return {"level": "danger", "level_text": "危险：建议先复位再上电", "issues": issues,
                     "online_count": len(online), "total": total,
-                    "out_of_range": out_of_range, "offline": offline,
-                    "voltage_err": voltage_err, "other_err": other_err}
-        if offline or other_err:
-            return {"level": "warn", "level_text": "警告：部分关节未响应或报错", "issues": issues,
+                    "out_of_range": out_of_range, "offline": offline, "err_joints": err_joints}
+        if offline or err_joints:
+            return {"level": "warn", "level_text": "警告：部分关节未响应或报错误码", "issues": issues,
                     "online_count": len(online), "total": total,
-                    "out_of_range": [], "offline": offline,
-                    "voltage_err": voltage_err, "other_err": other_err}
+                    "out_of_range": [], "offline": offline, "err_joints": err_joints}
         return {"level": "safe", "level_text": "安全：可以上电", "issues": [],
                 "online_count": len(online), "total": total,
-                "out_of_range": [], "offline": [],
-                "voltage_err": [], "other_err": []}
+                "out_of_range": [], "offline": [], "err_joints": []}
 
     @staticmethod
     def _parse_hex(stdout):
@@ -564,15 +581,21 @@ class Handler(BaseHTTPRequestHandler):
             frame_rate = body.get("frame_rate", 30)
             r = self.robot.play(action, frame_rate=frame_rate)
             self._json({"ok": True, "action": action, "frame_rate": frame_rate,
-                        "output": (r.stdout or "")[:200]})
+                        "command": getattr(r, "cmd", ""),
+                        "response": getattr(r, "resp", ""),
+                        "output": (r.stdout or "")[:300]})
         elif path == "/api/idle":
             action = (body.get("action") or "").strip()
             frame_rate = body.get("frame_rate", 30)
             r = self.robot.play_idle(action, frame_rate=frame_rate)
-            self._json({"ok": True, "action": action, "frame_rate": frame_rate})
+            self._json({"ok": True, "action": action, "frame_rate": frame_rate,
+                        "command": getattr(r, "cmd", ""),
+                        "response": getattr(r, "resp", "")})
         elif path == "/api/reset":
             r = self.robot.reset()
-            self._json({"ok": True, "output": (r.stdout or "")[:200]})
+            self._json({"ok": True, "command": getattr(r, "cmd", ""),
+                        "response": getattr(r, "resp", ""),
+                        "output": (r.stdout or "")[:200]})
         elif path == "/api/refresh":
             self.robot.refresh_motions()
             self._json({"ok": True, "note": "动作列表已刷新"})
