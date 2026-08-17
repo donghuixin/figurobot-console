@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FiguRobot · 机器人控制台</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+  :root {
+    --bg: #070b14;
+    --bg2: #0b1120;
+    --panel: rgba(255, 255, 255, 0.045);
+    --panel-strong: rgba(255, 255, 255, 0.075);
+    --stroke: rgba(255, 255, 255, 0.09);
+    --stroke-strong: rgba(255, 255, 255, 0.17);
+    --text: #e7eefb;
+    --text-dim: #9aa8c2;
+    --text-faint: #5d6b85;
+    --cyan: #22d3ee;
+    --cyan-soft: #38bdf8;
+    --blue: #4f7cff;
+    --violet: #8b5cf6;
+    --green: #34d399;
+    --amber: #fbbf24;
+    --red: #fb7185;
+    --radius: 18px;
+    --mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--sans); color: var(--text); background: var(--bg);
+    -webkit-font-smoothing: antialiased; min-height: 100vh;
+  }
+  .bg {
+    position: fixed; inset: 0; z-index: -2;
+    background:
+      radial-gradient(720px 520px at 12% 8%, rgba(34,211,238,0.16), transparent 62%),
+      radial-gradient(820px 620px at 88% 14%, rgba(139,92,246,0.15), transparent 60%),
+      radial-gradient(620px 560px at 50% 100%, rgba(79,124,255,0.12), transparent 62%),
+      linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+  }
+  .bg::after {
+    content: ""; position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 0%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 0%, transparent 75%);
+  }
+  .glass {
+    background: var(--panel);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    border: 1px solid var(--stroke);
+    border-radius: var(--radius);
+    box-shadow: 0 10px 34px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.055);
+  }
+
+  header {
+    display: flex; align-items: center; gap: 16px; padding: 14px 20px;
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(9,14,26,0.62); backdrop-filter: blur(22px) saturate(150%);
+    -webkit-backdrop-filter: blur(22px) saturate(150%);
+    border-bottom: 1px solid var(--stroke);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand .logo {
+    width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center;
+    background: linear-gradient(135deg, rgba(34,211,238,0.22), rgba(139,92,246,0.22));
+    border: 1px solid var(--stroke-strong); box-shadow: 0 0 22px rgba(34,211,238,0.28);
+  }
+  .brand h1 { font-size: 16px; font-weight: 700; }
+  .brand .sub { font-size: 10.5px; color: var(--text-faint); letter-spacing: 1.6px; text-transform: uppercase; }
+  .hdr-status { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .stat-pill {
+    display: flex; align-items: center; gap: 8px; padding: 7px 13px; border-radius: 999px;
+    background: var(--panel); border: 1px solid var(--stroke); font-size: 12px; color: var(--text-dim);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); }
+  .dot.on { background: var(--green); box-shadow: 0 0 10px var(--green); animation: pulse 2s infinite; }
+  .dot.err { background: var(--red); box-shadow: 0 0 10px var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  .layout { display: grid; grid-template-columns: 320px 1fr; gap: 16px; padding: 16px; max-width: 1560px; margin: 0 auto; }
+  @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+
+  aside { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .card { padding: 16px; }
+  .card h2 {
+    font-size: 11.5px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase;
+    color: var(--text-dim); margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+  }
+  .card h2 svg { color: var(--cyan); }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 10px 14px; border-radius: 11px; border: 1px solid var(--stroke-strong);
+    background: var(--panel-strong); color: var(--text); font-family: inherit; font-size: 13px;
+    font-weight: 500; cursor: pointer; transition: transform .12s, background .18s, border-color .18s, box-shadow .18s;
+    white-space: nowrap;
+  }
+  .btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.28); }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  .btn.primary {
+    background: linear-gradient(135deg, rgba(34,211,238,0.9), rgba(79,124,255,0.9));
+    border-color: transparent; color: #041018; font-weight: 600; box-shadow: 0 6px 20px rgba(34,211,238,0.32);
+  }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn.danger { background: rgba(251,113,133,0.14); border-color: rgba(251,113,133,0.34); color: #ffb3c0; }
+  .btn.ghost { background: transparent; border-color: var(--stroke); color: var(--text-dim); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; pointer-events: none; }
+  .btn svg { flex-shrink: 0; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  label.field { display: block; font-size: 11px; color: var(--text-faint); letter-spacing: .5px; margin-bottom: 6px; }
+  input[type="text"], input[type="number"], select {
+    width: 100%; padding: 9px 11px; border-radius: 10px; background: rgba(0,0,0,0.28);
+    border: 1px solid var(--stroke); color: var(--text); font-family: inherit; font-size: 13px;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--cyan); }
+
+  /* 动作库 */
+  .motion-toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  .search { flex: 1; min-width: 180px; position: relative; }
+  .search input { padding-left: 34px; }
+  .search svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-faint); }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .chip {
+    padding: 6px 13px; border-radius: 999px; border: 1px solid var(--stroke); background: var(--panel);
+    color: var(--text-dim); font-size: 12px; cursor: pointer; transition: all .15s; font-family: inherit;
+  }
+  .chip:hover { border-color: var(--cyan); color: var(--text); }
+  .chip.active { background: rgba(34,211,238,0.16); border-color: var(--cyan); color: var(--cyan); }
+
+  .motion-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .motion-card {
+    padding: 16px 14px; border-radius: 14px; border: 1px solid var(--stroke);
+    background: rgba(255,255,255,0.03); cursor: pointer; text-align: center;
+    transition: all .18s ease; position: relative; overflow: hidden;
+  }
+  .motion-card:hover { background: rgba(255,255,255,0.07); border-color: rgba(34,211,238,0.5); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(34,211,238,0.15); }
+  .motion-card .icon { font-size: 26px; margin-bottom: 8px; filter: grayscale(0.2); }
+  .motion-card .name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .motion-card .fps { font-size: 10.5px; color: var(--text-faint); margin-top: 5px; font-family: var(--mono); }
+  .motion-card.playing { border-color: var(--green); background: rgba(52,211,153,0.1); box-shadow: 0 0 0 1px rgba(52,211,153,0.4), 0 8px 26px rgba(52,211,153,0.2); }
+  .motion-card.playing::after { content: "播放中"; position: absolute; top: 8px; right: 8px; font-size: 9px; color: var(--green); padding: 2px 6px; border-radius: 6px; background: rgba(52,211,153,0.18); }
+  .motion-card.idle::before { content: "待机"; position: absolute; top: 8px; left: 8px; font-size: 9px; color: var(--amber); padding: 2px 6px; border-radius: 6px; background: rgba(251,191,36,0.16); }
+
+  /* 关节控制 */
+  .joint-list { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; padding-right: 2px; }
+  .joint-list::-webkit-scrollbar, .log::-webkit-scrollbar { width: 8px; }
+  .joint-list::-webkit-scrollbar-thumb, .log::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 8px; }
+  .joint-item { padding: 10px 12px; border-radius: 11px; border: 1px solid var(--stroke); background: rgba(255,255,255,0.02); }
+  .joint-item .jhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .joint-item .jid { font-family: var(--mono); color: var(--cyan); font-size: 12px; }
+  .joint-item .jval { font-family: var(--mono); font-size: 12px; color: var(--text-dim); }
+  input[type="range"] { -webkit-appearance: none; width: 100%; height: 20px; background: transparent; cursor: pointer; }
+  input[type="range"]::-webkit-slider-runnable-track { height: 6px; border-radius: 4px; background: linear-gradient(90deg, rgba(34,211,238,0.7) var(--fill,50%), rgba(255,255,255,0.09) var(--fill,50%)); }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; margin-top: -5px; background: #fff; border: 2px solid var(--cyan); box-shadow: 0 0 10px rgba(34,211,238,0.55); }
+  input[type="range"]::-moz-range-track { height: 6px; border-radius: 4px; background: rgba(255,255,255,0.09); }
+  input[type="range"]::-moz-range-progress { height: 6px; border-radius: 4px; background: rgba(34,211,238,0.7); }
+  input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid var(--cyan); }
+
+  .switch { position: relative; display: inline-block; width: 40px; height: 22px; cursor: pointer; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .track { position: absolute; inset: 0; border-radius: 999px; background: rgba(255,255,255,0.1); border: 1px solid var(--stroke-strong); transition: background .2s; }
+  .switch .track::after { content: ""; position: absolute; left: 3px; top: 3px; width: 14px; height: 14px; border-radius: 50%; background: #b8c4d8; transition: transform .2s, background .2s; }
+  .switch input:checked + .track { background: rgba(34,211,238,0.35); border-color: rgba(34,211,238,0.6); }
+  .switch input:checked + .track::after { transform: translateX(18px); background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+
+  .log {
+    font-family: var(--mono); font-size: 11.5px; line-height: 1.7; background: rgba(0,0,0,0.32);
+    border: 1px solid var(--stroke); border-radius: 12px; padding: 12px; height: 150px; overflow-y: auto;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  .log .ok { color: var(--green); } .log .err { color: var(--red); } .log .sys { color: var(--text-faint); }
+  .log .act { color: var(--cyan); } .log .warn { color: var(--amber); }
+
+  .hint { font-size: 11.5px; color: var(--text-faint); line-height: 1.6; margin-top: 8px; }
+
+  /* 姿态与安全 */
+  .pose-banner {
+    display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--stroke); margin-bottom: 12px;
+  }
+  .pose-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--text-faint); flex-shrink: 0; }
+  .pose-dot.safe { background: var(--green); box-shadow: 0 0 10px var(--green); }
+  .pose-dot.warn { background: var(--amber); box-shadow: 0 0 10px var(--amber); }
+  .pose-dot.danger { background: var(--red); box-shadow: 0 0 10px var(--red); animation: pulse 1.4s infinite; }
+  .pose-dot.power { background: #f97316; box-shadow: 0 0 12px #f97316; animation: pulse 1.2s infinite; }
+  .pose-title { font-size: 13px; font-weight: 600; }
+  .pose-sub { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+  .pose-banner.safe { border-color: rgba(52,211,153,0.42); }
+  .pose-banner.warn { border-color: rgba(251,191,36,0.42); }
+  .pose-banner.danger { border-color: rgba(251,113,133,0.5); }
+  .pose-banner.power { border-color: rgba(249,115,22,0.6); background: rgba(249,115,22,0.06); }
+  .joint-angle-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 6px 10px; border-radius: 8px; border: 1px solid var(--stroke);
+    background: rgba(255,255,255,0.02); font-size: 12px;
+  }
+  .joint-angle-row .jid { font-family: var(--mono); color: var(--cyan); }
+  .joint-angle-row .jdeg { font-family: var(--mono); color: var(--text-dim); }
+  .joint-angle-row.offline { opacity: 0.4; }
+  .joint-angle-row.oob { border-color: rgba(251,113,133,0.5); background: rgba(251,113,133,0.08); }
+  .joint-angle-row.oob .jdeg { color: var(--red); }
+  .joint-angle-row.power { border-color: rgba(249,115,22,0.55); background: rgba(249,115,22,0.08); }
+  .joint-angle-row.power .jdeg { color: #fdba74; }
+  .joint-angle-row.err { border-color: rgba(139,92,246,0.45); background: rgba(139,92,246,0.05); }
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(20px); padding: 11px 18px; border-radius: 12px; background: rgba(13,21,36,0.92); border: 1px solid var(--stroke-strong); backdrop-filter: blur(16px); font-size: 13px; opacity: 0; pointer-events: none; transition: all .25s; z-index: 100; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* 3D 姿态模态层 */
+  .modal { position: fixed; inset: 0; z-index: 200; display: none; }
+  .modal.open { display: block; }
+  .modal-backdrop { position: absolute; inset: 0; background: rgba(4,7,14,0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  .modal-content {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: min(900px, 92vw); height: min(640px, 88vh);
+    background: rgba(13,20,36,0.92); border: 1px solid var(--stroke-strong); border-radius: var(--radius);
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6); display: flex; flex-direction: column; overflow: hidden;
+    backdrop-filter: blur(24px) saturate(150%); -webkit-backdrop-filter: blur(24px) saturate(150%);
+  }
+  .modal-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--stroke); }
+  .modal-head .title { font-size: 14px; font-weight: 600; flex: 1; }
+  .modal-head .legend { display: flex; gap: 12px; font-size: 11px; color: var(--text-dim); align-items: center; }
+  .modal-head .legend .lg { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
+  .modal-head .legend .lg.safe { background: var(--green); } .modal-head .legend .lg.warn { background: var(--amber); } .modal-head .legend .lg.danger { background: var(--red); }
+  #pose3dCanvas { flex: 1; position: relative; }
+  #pose3dCanvas canvas { display: block; }
+  .modal-foot { padding: 10px 18px; border-top: 1px solid var(--stroke); font-size: 11px; color: var(--text-faint); text-align: center; }
+  .modal-foot .k { color: var(--text-dim); }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+
+<header>
+  <div class="brand">
+    <div class="logo">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="12" r="2"/><path d="M8 12h8"/><path d="M12 6V4"/></svg>
+    </div>
+    <div><h1>FiguRobot 控制台</h1><div class="sub">Humanoid · Motion Control</div></div>
+  </div>
+  <div class="hdr-status">
+    <div class="stat-pill"><span class="dot" id="ledBridge"></span><span id="lblBridge">桥接未连接</span></div>
+    <div class="stat-pill"><span class="dot" id="ledRobot"></span><span id="lblRobot">机器人 —</span></div>
+    <div class="stat-pill"><span class="dot" id="ledPlay"></span><span id="lblPlay">空闲</span></div>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- ============ 侧栏 ============ -->
+  <aside>
+    <div class="card glass">
+      <h2><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/><rect x="2" y="3" width="20" height="18" rx="2"/></svg>连接</h2>
+      <label class="field">桥接服务地址</label>
+      <input type="text" id="bridgeUrl" value="http://127.0.0.1:8888" style="margin-bottom:10px">
+      <div class="btn-row">
+        <button class="btn primary" id="btnConnectBridge" style="flex:1">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>连接桥接
+        </button>
+        <button class="btn ghost" id="btnRefresh">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v6h-6"/></svg>
+        </button>
+      </div>
+      <div class="hint" id="bridgeHint">先运行 robot_bridge.py 再连接。</div>
+    </div>
+
+    <div class="card glass">
+      <h2><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1l2.1-2.1M17 7l2.1-2.1"/></svg>关节实时控制</h2>
+      <div class="btn-row" style="margin-bottom:10px">
+        <button class="btn" id="btnJointScan" style="flex:1">扫描关节</button>
+        <button class="btn danger" id="btnJointDisable">断电</button>
+      </div>
+      <div class="joint-list" id="jointList"><div class="hint" style="text-align:center;padding:10px 0">点击「扫描关节」发现在线电机</div></div>
+      <div class="hint">实时关节需串口空闲（motion_main 动作播放时自动切换，无需手动处理）。</div>
+    </div>
+
+    <div class="card glass">
+      <h2><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>姿态与安全</h2>
+      <div class="pose-banner" id="poseBanner">
+        <span class="pose-dot" id="poseDot"></span>
+        <div>
+          <div class="pose-title" id="poseText">尚未读取</div>
+          <div class="pose-sub" id="poseSub">点击「读取姿态」判断上电是否安全</div>
+        </div>
+      </div>
+      <div class="btn-row" style="margin-bottom:8px">
+        <button class="btn primary" id="btnReadPose" style="flex:1">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v6h-6"/></svg>读取姿态
+        </button>
+        <button class="btn" id="btnPose3D" title="3D 关节点展示">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 16-8 3-8-3V8l8-3 8 3v8z"/><path d="m3 8 8 3 8-3"/><path d="m13 11v8"/></svg>3D
+        </button>
+      </div>
+      <div class="joint-list" id="poseList" style="max-height:210px">
+        <div class="hint" style="text-align:center;padding:10px 0">读取后显示所有关节角度</div>
+      </div>
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn danger" id="btnPoseReset" style="flex:1">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>姿态复位
+        </button>
+      </div>
+      <div class="hint" id="poseHint">安全范围约 4.4°–316.5°（对应限位 50–3600 tick）。</div>
+    </div>
+  </aside>
+
+  <!-- ============ 主区 ============ -->
+  <main style="display:flex;flex-direction:column;gap:14px;min-width:0">
+    <div class="glass card">
+      <h2><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>动作库 <span id="motionCount" style="color:var(--text-faint);text-transform:none;letter-spacing:0;margin-left:2px"></span></h2>
+      <div class="motion-toolbar">
+        <div class="search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="searchBox" placeholder="搜索动作…">
+        </div>
+        <button class="btn danger" id="btnReset">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>复位
+        </button>
+      </div>
+      <div class="chips" id="chips"></div>
+      <div class="motion-grid" id="motionGrid"><div class="hint" style="grid-column:1/-1;text-align:center;padding:30px 0">连接桥接服务后自动加载动作</div></div>
+    </div>
+
+    <div class="glass card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <h2 style="margin:0;flex:1"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>运行日志</h2>
+        <button class="btn ghost" id="btnClearLog" style="padding:5px 10px;font-size:11px">清空</button>
+      </div>
+      <div class="log" id="logBox"></div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- 3D 姿态模态层 -->
+<div class="modal" id="pose3dModal">
+  <div class="modal-backdrop" id="pose3dBackdrop"></div>
+  <div class="modal-content">
+    <div class="modal-head">
+      <span class="title">3D 关节姿态</span>
+      <div class="legend">
+        <span><i class="lg safe"></i>安全</span>
+        <span><i class="lg warn"></i>离线</span>
+        <span><i class="lg danger"></i>超限</span>
+      </div>
+      <button class="btn ghost" id="btnClose3D" style="padding:6px 12px;font-size:12px">关闭</button>
+    </div>
+    <div id="pose3dCanvas"></div>
+    <div class="modal-foot"><span class="k">拖动</span> 旋转视角 · <span class="k">滚轮</span> 缩放 · <span class="k">右键</span> 平移 · 关节球颜色表示安全状态</div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const toastEl = $("toast");
+let toastTimer;
+function toast(m) { toastEl.textContent = m; toastEl.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2200); }
+function log(msg, cls = "sys") {
+  const t = new Date().toTimeString().slice(0, 8);
+  const el = $("logBox"); const d = document.createElement("div");
+  d.className = cls; d.textContent = `[${t}] ${msg}`;
+  el.appendChild(d); el.scrollTop = el.scrollHeight;
+}
+
+let API = "http://127.0.0.1:8888";
+let motions = [];
+let currentCategory = "全部";
+let playingAction = null;
+
+// ---------- 分类 ----------
+const CATEGORIES = ["全部", "问候", "舞蹈", "情绪", "姿态", "其他"];
+const CAT_RULES = [
+  { cat: "问候", kw: ["你好", "挥手", "招手", "招呼", "握手", "敬礼"] },
+  { cat: "舞蹈", kw: ["舞", "科目三", "埃及手", "太极", "早操", "人偶娃娃", "抖音", "摆臂", "跑步", "蹲"] },
+  { cat: "情绪", kw: ["高兴", "难过", "愤怒", "害羞", "惊讶", "恐惧", "开心", "失落", "平静", "好奇", "纠结", "傲慢", "叛逆", "得瑟", "发呆", "思考", "惊喜", "惊吓", "恼怒", "低落", "恐惧", "生气"] },
+  { cat: "姿态", kw: ["pose", "叉腰", "抱胸", "展臂", "伸展", "抬脚", "翘腿", "摇摆", "转腰", "定点", "射箭", "低头", "手抱", "侧身", "左右"] },
+];
+function categorize(name) {
+  for (const r of CAT_RULES) if (r.kw.some(k => name.includes(k))) return r.cat;
+  return "其他";
+}
+
+// ---------- API ----------
+async function api(path, opts) {
+  const r = await fetch(API + path, opts);
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+
+async function connectBridge() {
+  API = $("bridgeUrl").value.trim().replace(/\/+$/, "");
+  try {
+    const st = await api("/api/status");
+    $("lblBridge").textContent = "桥接已连接";
+    setLed("ledBridge", true);
+    $("bridgeHint").textContent = `桥接正常 · 设备 ${st.serial || "?"} · ${st.protocol || ""}`;
+    if (st.connected) { $("lblRobot").textContent = "机器人在线"; setLed("ledRobot", true); }
+    else { $("lblRobot").textContent = "机器人离线"; setLed("ledRobot", false); }
+    log("已连接桥接服务 " + API, "ok");
+    await loadMotions();
+  } catch (e) {
+    setLed("ledBridge", false); $("lblBridge").textContent = "桥接未连接";
+    $("bridgeHint").textContent = "连接失败：请确认 robot_bridge.py 已启动（python robot_bridge.py）";
+    log("桥接连接失败: " + e.message, "err");
+  }
+}
+
+async function loadMotions() {
+  try {
+    const d = await api("/api/motions");
+    motions = d.motions || [];
+    $("motionCount").textContent = `（${motions.length} 个动作）`;
+    renderChips(); renderMotions();
+    log(`已加载 ${motions.length} 个动作`, "ok");
+  } catch (e) { log("加载动作失败: " + e.message, "err"); }
+}
+
+function renderChips() {
+  const box = $("chips"); box.innerHTML = "";
+  for (const c of CATEGORIES) {
+    const b = document.createElement("button");
+    b.className = "chip" + (c === currentCategory ? " active" : "");
+    b.textContent = c;
+    b.addEventListener("click", () => { currentCategory = c; renderChips(); renderMotions(); });
+    box.appendChild(b);
+  }
+}
+
+const MOTION_ICONS = ["🤖","👋","💃","🎭","🧘","🕺","🙌","🎵","✨","🤸","🙏","😄","😢","😠","😳","🤔"];
+function iconFor(name) {
+  let h = 0; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) & 0xffff;
+  return MOTION_ICONS[h % MOTION_ICONS.length];
+}
+
+function renderMotions() {
+  const grid = $("motionGrid"); grid.innerHTML = "";
+  const q = $("searchBox").value.trim();
+  const filtered = motions.filter(m => {
+    const name = m.file.replace(/\.csv$/i, "");
+    const okCat = currentCategory === "全部" || categorize(name) === currentCategory;
+    const okQ = !q || name.includes(q);
+    return okCat && okQ;
+  });
+  if (filtered.length === 0) { grid.innerHTML = '<div class="hint" style="grid-column:1/-1;text-align:center;padding:30px 0">无匹配动作</div>'; return; }
+  for (const m of filtered) {
+    const name = m.file.replace(/\.csv$/i, "");
+    const card = document.createElement("div");
+    card.className = "motion-card" + (m.is_idle ? " idle" : "") + (playingAction === name ? " playing" : "");
+    card.innerHTML = `<div class="icon">${iconFor(name)}</div><div class="name">${name}</div><div class="fps">${m.frame_rate} fps</div>`;
+    card.addEventListener("click", () => playAction(name));
+    grid.appendChild(card);
+  }
+}
+
+async function playAction(name) {
+  try {
+    await api("/api/play", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: name }) });
+    playingAction = name;
+    $("lblPlay").textContent = "播放: " + name; setLed("ledPlay", true);
+    log(`▶ 播放动作「${name}」`, "act");
+    renderMotions();
+    toast("正在播放：" + name);
+  } catch (e) { log("播放失败: " + e.message, "err"); toast("播放失败"); }
+}
+
+async function resetRobot() {
+  try {
+    await api("/api/reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    playingAction = null; $("lblPlay").textContent = "已复位"; setLed("ledPlay", false);
+    log("关节已复位 (Motion_Reset)", "ok"); renderMotions(); toast("已复位");
+  } catch (e) { log("复位失败: " + e.message, "err"); }
+}
+
+// ---------- 关节控制 ----------
+const joints = {}; // id -> {online}
+async function scanJoints() {
+  const box = $("jointList"); box.innerHTML = '<div class="hint">扫描中…</div>';
+  try {
+    const d = await api("/api/joint/scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ start: 1, end: 32 }) });
+    log("关节扫描完成 raw=" + (d.raw || "(空)"), "sys");
+    // 从响应解析在线 ID（响应帧包含 ID）
+    const raw = d.raw || "";
+    const onlineIds = new Set();
+    for (let i = 0; i < raw.length - 10; i += 2) { /* 简单解析留空，主推动作播放 */ }
+    box.innerHTML = '<div class="hint">关节实时控制依赖串口空闲，当前以动作播放为主。扫描结果见日志。</div>';
+    toast("扫描完成");
+  } catch (e) { log("扫描失败: " + e.message, "err"); }
+}
+
+// ---------- 姿态读取与安全判断 ----------
+function setPoseBanner(level, title, sub) {
+  const banner = $("poseBanner"), dot = $("poseDot");
+  banner.className = "pose-banner " + (level || "");
+  dot.className = "pose-dot " + (level || "");
+  $("poseText").textContent = title;
+  $("poseSub").textContent = sub || "";
+}
+
+function renderPoseList(joints, safety) {
+  const box = $("poseList");
+  const oob = new Set((safety && safety.out_of_range || []).map(x => String(x[0])));
+  const offline = new Set((safety && safety.offline) || []);
+  const voltageErr = new Set((safety && safety.voltage_err) || []);
+  const otherErr = new Set((safety && safety.other_err) || []);
+  const ids = Object.keys(joints).sort((a, b) => Number(a) - Number(b));
+  box.innerHTML = "";
+  if (ids.length === 0) { box.innerHTML = '<div class="hint" style="text-align:center;padding:10px 0">无数据</div>'; return; }
+  for (const id of ids) {
+    const j = joints[id];
+    const row = document.createElement("div");
+    let cls = "joint-angle-row";
+    let angle;
+    if (!j.online) {
+      cls += " offline";
+      angle = "无响应";
+    } else if (voltageErr.has(id)) {
+      cls += " power";
+      angle = "电压错误";
+    } else if (otherErr.has(id)) {
+      cls += " err";
+      angle = j.angle != null ? j.angle.toFixed(1) + "°" : (j.error_text || "错误");
+    } else if (oob.has(id)) {
+      cls += " oob";
+      angle = j.angle != null ? j.angle.toFixed(1) + "°" : "—";
+    } else {
+      angle = j.angle != null ? j.angle.toFixed(1) + "°" : "—";
+    }
+    row.className = cls;
+    row.title = j.online ? (j.error_text || (j.angle != null ? `raw=${j.raw}` : "")) : "舵机无响应（可能未接电机或 ID 不在配置中）";
+    row.innerHTML = `<span class="jid">#${id}</span><span class="jdeg">${angle}</span>`;
+    box.appendChild(row);
+  }
+}
+
+async function readPose() {
+  const btn = $("btnReadPose");
+  btn.disabled = true;
+  setPoseBanner("", "读取中…", "正在通过串口读取所有关节");
+  try {
+    const d = await api("/api/pose", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    if (d.error) {
+      setPoseBanner("danger", "读取失败", d.error);
+      log("姿态读取失败: " + d.error, "err");
+      return;
+    }
+    const safety = d.safety || {};
+    renderPoseList(d.joints, safety);
+    if (window.Pose3D) window.Pose3D.update(d.joints, d.zero_values);
+    const lv = safety.level;
+    if (lv === "safe") {
+      setPoseBanner("safe", safety.level_text, `${safety.online_count}/${safety.total} 关节在线，均在安全范围`);
+      log("姿态安全：可以上电", "ok");
+    } else if (lv === "power") {
+      setPoseBanner("power", safety.level_text, safety.issues.join("；"));
+      log("电源异常: " + safety.issues.join("；"), "err");
+    } else if (lv === "danger") {
+      setPoseBanner("danger", safety.level_text, safety.issues.join("；"));
+      log("姿态危险: " + safety.issues.join("；"), "err");
+    } else if (lv === "warn") {
+      setPoseBanner("warn", safety.level_text, safety.issues.join("；"));
+      log("姿态警告: " + safety.issues.join("；"), "warn");
+    } else {
+      setPoseBanner("warn", safety.level_text || "未知", "");
+    }
+  } catch (e) {
+    setPoseBanner("danger", "读取失败", e.message);
+    log("姿态读取异常: " + e.message, "err");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function poseReset() {
+  if (!confirm("确认执行姿态复位？机器人将回到安全姿态（Motion_Reset）。")) return;
+  try {
+    await api("/api/reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    log("姿态复位已触发 (Motion_Reset)", "ok");
+    toast("姿态复位中…");
+    playingAction = null; $("lblPlay").textContent = "已复位"; setLed("ledPlay", false);
+    renderMotions();
+    setTimeout(readPose, 2500);
+  } catch (e) { log("姿态复位失败: " + e.message, "err"); toast("复位失败"); }
+}
+
+// ---------- 事件 ----------
+$("btnConnectBridge").addEventListener("click", connectBridge);
+$("btnRefresh").addEventListener("click", () => { connectBridge(); });
+$("btnReset").addEventListener("click", resetRobot);
+$("btnJointScan").addEventListener("click", scanJoints);
+$("btnJointDisable").addEventListener("click", () => toast("断电功能需串口空闲"));
+$("btnReadPose").addEventListener("click", readPose);
+$("btnPoseReset").addEventListener("click", poseReset);
+$("btnClearLog").addEventListener("click", () => $("logBox").innerHTML = "");
+$("searchBox").addEventListener("input", renderMotions);
+$("bridgeUrl").addEventListener("keydown", e => { if (e.key === "Enter") connectBridge(); });
+
+function setLed(id, on, err = false) { const d = $(id); d.classList.toggle("on", on && !err); d.classList.toggle("err", err); }
+
+log("FiguRobot 控制台已就绪。请先运行 robot_bridge.py，然后点击「连接桥接」。", "sys");
+log("控制链路：网页 → 桥接服务(adb) → 控制盒 motion_main → 串口 → 32 关节电机", "sys");
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ================= 人形骨架定义（关节拓扑，可按实际机器人调整） =================
+// [name, servoId, parentName, offset[x,y,z], 旋转轴]
+// 关节映射基于左右对称推测：头颈 1,2 | 左臂 3,4,6,8 | 右臂 7,9,11,13 | 腰 12,14,15,16,17 | 左腿 19,21,23,25,27,29 | 右腿 20,22,24,26,28,30
+const SKELETON = [
+  ['骨盆',  null, null,   [0, 1.00, 0], null],
+  ['腰Y',   12, '骨盆',  [0, 0.30, 0], 'y'],
+  ['腰P',   15, '腰Y',   [0, 0.08, 0], 'x'],
+  ['腰R',   14, '腰P',   [0, 0.08, 0], 'z'],
+  ['胸P',   16, '腰R',   [0, 0.18, 0], 'x'],
+  ['胸R',   17, '胸P',   [0, 0.04, 0], 'z'],
+  ['颈P',    2, '胸R',   [0, 0.14, 0], 'x'],
+  ['头Y',    1, '颈P',   [0, 0.18, 0], 'y'],
+  ['左肩P',  3, '胸R',  [-0.17, 0.20, 0], 'x'],
+  ['左肩R',  4, '左肩P',[0, -0.02, 0], 'z'],
+  ['左肘P',  6, '左肩R',[0, -0.27, 0], 'x'],
+  ['左腕P',  8, '左肘P',[0, -0.27, 0], 'x'],
+  ['右肩P',  7, '胸R',  [0.17, 0.20, 0], 'x'],
+  ['右肩R',  9, '右肩P',[0, -0.02, 0], 'z'],
+  ['右肘P', 11, '右肩R',[0, -0.27, 0], 'x'],
+  ['右腕P', 13, '右肘P',[0, -0.27, 0], 'x'],
+  ['左髋P', 19, '骨盆', [-0.10, -0.04, 0], 'x'],
+  ['左髋R', 21, '左髋P',[0, 0, 0], 'z'],
+  ['左髋Y', 29, '左髋R',[0, 0, 0], 'y'],
+  ['左膝P', 23, '左髋Y',[0, -0.40, 0], 'x'],
+  ['左踝P', 25, '左膝P',[0, -0.40, 0], 'x'],
+  ['左踝R', 27, '左踝P',[0, -0.02, 0], 'z'],
+  ['右髋P', 20, '骨盆', [0.10, -0.04, 0], 'x'],
+  ['右髋R', 22, '右髋P',[0, 0, 0], 'z'],
+  ['右髋Y', 30, '右髋R',[0, 0, 0], 'y'],
+  ['右膝P', 24, '右髋Y',[0, -0.40, 0], 'x'],
+  ['右踝P', 26, '右膝P',[0, -0.40, 0], 'x'],
+  ['右踝R', 28, '右踝P',[0, -0.02, 0], 'z'],
+];
+
+const SAFE_MIN = 4.4, SAFE_MAX = 316.5;   // 安全角度范围（度）
+
+let scene, camera, renderer, controls, rootGroup;
+let jointMap = {};    // servoId -> {group, sphere, axis, name}
+let boneLines = [];   // {line, parentGroup, childGroup}
+let animId = null, inited = false;
+
+function init3D() {
+  const container = document.getElementById('pose3dCanvas');
+  if (inited) return;
+  inited = true;
+
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+  camera.position.set(2.6, 1.6, 3.2);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setClearColor(0x000000, 0);
+  container.appendChild(renderer.domElement);
+
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.target.set(0, 0.85, 0);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+
+  // 地面参考网格
+  const grid = new THREE.GridHelper(4, 20, 0x2a3a55, 0x1a2740);
+  grid.position.y = -0.02;
+  scene.add(grid);
+
+  // 环境光 + 方向光
+  scene.add(new THREE.AmbientLight(0x8899bb, 1.4));
+  const dir = new THREE.DirectionalLight(0xffffff, 1.2);
+  dir.position.set(3, 6, 4);
+  scene.add(dir);
+
+  buildSkeleton();
+  resize();
+  window.addEventListener('resize', resize);
+  animate();
+}
+
+function resize() {
+  const container = document.getElementById('pose3dCanvas');
+  if (!container) return;
+  const w = container.clientWidth, h = container.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+
+function buildSkeleton() {
+  rootGroup = new THREE.Group();
+  scene.add(rootGroup);
+
+  const byName = {};
+  const boneParentInfo = []; // {childName, parentName}
+
+  SKELETON.forEach(([name, servoId, parentName, offset, axis]) => {
+    const g = new THREE.Group();
+    g.position.set(offset[0], offset[1], offset[2]);
+    // 关节球
+    const isRoot = parentName === null;
+    const sphere = new THREE.Mesh(
+      new THREE.SphereGeometry(isRoot ? 0.09 : 0.055, 24, 24),
+      new THREE.MeshStandardMaterial({ color: 0x3b4a66, roughness: 0.4, metalness: 0.2 })
+    );
+    g.add(sphere);
+    // 根节点球稍大，作为骨盆/躯干视觉
+    if (isRoot) { const t = new THREE.Mesh(new THREE.SphereGeometry(0.14, 24, 24), new THREE.MeshStandardMaterial({ color: 0x2a3a55, roughness: 0.5 })); g.add(t); }
+    g.userData = { name, servoId, axis, sphere };
+    byName[name] = g;
+    if (parentName === null) rootGroup.add(g);
+    else boneParentInfo.push({ childName: name, parentName });
+    if (servoId !== null) jointMap[servoId] = { group: g, sphere, axis, name };
+  });
+
+  // 挂载层级
+  boneParentInfo.forEach(({ childName, parentName }) => {
+    byName[parentName].add(byName[childName]);
+  });
+
+  // 骨骼线
+  SKELETON.forEach(([name, , parentName]) => {
+    if (parentName === null) return;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+    const mat = new THREE.LineBasicMaterial({ color: 0x4a5f85, transparent: true, opacity: 0.9 });
+    const line = new THREE.Line(geo, mat);
+    scene.add(line);
+    boneLines.push({ line, parentGroup: byName[parentName], childGroup: byName[name] });
+  });
+}
+
+const _pv = new THREE.Vector3(), _cv = new THREE.Vector3();
+
+function animate() {
+  animId = requestAnimationFrame(animate);
+  // 更新骨骼线端点（跟随关节世界坐标）
+  boneLines.forEach(({ line, parentGroup, childGroup }) => {
+    parentGroup.getWorldPosition(_pv);
+    childGroup.getWorldPosition(_cv);
+    const pos = line.geometry.attributes.position;
+    pos.setXYZ(0, _pv.x, _pv.y, _pv.z);
+    pos.setXYZ(1, _cv.x, _cv.y, _cv.z);
+    pos.needsUpdate = true;
+  });
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+function updatePose3D(joints, zeroValues) {
+  if (!inited) return;
+  const zv = zeroValues || {};
+  for (const sid of Object.keys(jointMap)) {
+    const jm = jointMap[sid];
+    const j = joints ? joints[sid] : null;
+    const online = j && j.online;
+    const raw = j ? j.raw : null;
+    // 相对中立位角度
+    let relDeg = 0;
+    if (online && raw !== null && raw !== undefined) {
+      const zero = zv[sid] !== undefined ? zv[sid] : 2048;
+      relDeg = (raw - zero) * 360.0 / 4095.0;
+    }
+    // 旋转（弧度）
+    const rad = THREE.MathUtils.degToRad(relDeg);
+    const axis = jm.axis;
+    jm.group.rotation.set(0, 0, 0);
+    if (axis === 'x') jm.group.rotation.x = rad;
+    else if (axis === 'y') jm.group.rotation.y = rad;
+    else if (axis === 'z') jm.group.rotation.z = rad;
+    // 颜色：安全绿 / 超限红 / 离线黄
+    let color = 0xf0b429; // 离线
+    if (online) {
+      const angle = j.angle;
+      if (angle === null || angle === undefined) color = 0xf0b429;
+      else if (angle < SAFE_MIN || angle > SAFE_MAX) color = 0xfb7185; // 超限
+      else color = 0x34d399; // 安全
+    }
+    jm.sphere.material.color.setHex(color);
+  }
+}
+
+function open3D() {
+  document.getElementById('pose3dModal').classList.add('open');
+  if (!inited) { init3D(); } else { setTimeout(resize, 30); }
+}
+function close3D() {
+  document.getElementById('pose3dModal').classList.remove('open');
+}
+
+document.getElementById('btnClose3D').addEventListener('click', close3D);
+document.getElementById('pose3dBackdrop').addEventListener('click', close3D);
+document.getElementById('btnPose3D').addEventListener('click', open3D);
+
+window.Pose3D = { open: open3D, close: close3D, update: updatePose3D };
+</script>
+</body>
+</html>
