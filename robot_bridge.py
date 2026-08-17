@@ -371,7 +371,11 @@ class Robot:
         for i in range(id_start, id_end + 1):
             frames.append(bytes(build_frame(i, CMD["PING"], [])).hex())
         out = self._serial_exec(frames, read_timeout=0.6)
-        return self._parse_hex(out)
+        hexstr = self._parse_hex(out)
+        if isinstance(hexstr, dict):
+            return {"error": hexstr.get("error", "serial error"), "raw": "",
+                    "sent_frames": frames}
+        return {"raw": hexstr, "sent_frames": frames}
 
     # ---- 姿态读取 + 上电安全判断 ----
     @staticmethod
@@ -413,7 +417,13 @@ class Robot:
         out = self._serial_exec(ping_frames, read_timeout=0.4)
         hexstr = self._parse_hex(out)
         if isinstance(hexstr, dict):
-            return {"error": hexstr.get("error", "serial error"), "joints": {}}
+            return {"error": hexstr.get("error", "serial error"), "joints": {},
+                    "_debug": {"ping_count": len(ping_frames),
+                               "ping_sample": ping_frames[0] if ping_frames else "",
+                               "ping_response_hex": "",
+                               "read_count": 0, "read_sample": "",
+                               "read_addr": "0x84 (Present Position, 4 bytes)",
+                               "read_response_hex": ""}}
         ping_frames_parsed = self._parse_frames(hexstr)
         online_ids = []
         err_by_id = {}
@@ -430,6 +440,7 @@ class Robot:
                 id_order.append(sid)
         # 一些舵机在 error 状态时不会响应 READ，单独处理：尝试读，失败就保留 error 信息
         pos_by_id = {}
+        hexstr2 = ""
         if read_frames:
             out = self._serial_exec(read_frames, read_timeout=0.4)
             hexstr2 = self._parse_hex(out)
@@ -441,6 +452,16 @@ class Robot:
 
         # 组装结果
         result = {"joints": {}}
+        # 附加「发出的指令」和「机器反馈」用于前端日志打印
+        result["_debug"] = {
+            "ping_count": len(ping_frames),
+            "ping_sample": ping_frames[0] if ping_frames else "",
+            "ping_response_hex": hexstr if isinstance(hexstr, str) else "",
+            "read_count": len(read_frames),
+            "read_sample": read_frames[0] if read_frames else "",
+            "read_addr": "0x84 (Present Position, 4 bytes)",
+            "read_response_hex": hexstr2 if isinstance(hexstr2, str) else "",
+        }
         for sid in SERVO_IDS:
             if sid in online_ids:
                 err = err_by_id.get(sid, 0)
@@ -659,23 +680,33 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"ok": True, "id": dev_id, "enable": enable, "raw": res})
         elif path == "/api/joint/scan":
             res = self.robot.joint_scan(int(body.get("start", 1)), int(body.get("end", 32)))
-            self._json({"ok": True, "raw": res})
+            if isinstance(res, dict) and "error" in res:
+                self._json({"ok": False, "error": res["error"], "raw": res.get("raw", ""),
+                            "sent_frames": res.get("sent_frames", [])})
+            else:
+                self._json({"ok": True, "raw": res["raw"], "sent_frames": res.get("sent_frames", [])})
         elif path == "/api/pose":
             pose = self.robot.read_pose()
+            dbg = (pose.pop("_debug", {}) if isinstance(pose, dict) else {})
             if "error" in pose and not pose.get("joints"):
-                self._json({"error": pose["error"], "joints": {}, "safety": None}, 503)
+                self._json({"error": pose["error"], "joints": {}, "safety": None,
+                            "debug": dbg}, 503)
             else:
                 safety = self.robot.assess_safety(pose)
                 zero_values = self.robot.read_zero_values()
                 self._json({"ok": True, "joints": pose["joints"], "safety": safety,
                             "zero_values": zero_values,
+                            "debug": dbg,
                             "limits": {"min_angle": round(MIN_GOAL_TICK * DEG_MAX / POS_MAX, 2),
                                        "max_angle": round(MAX_GOAL_TICK * DEG_MAX / POS_MAX, 2)}})
         elif path == "/api/standby":
             quiet = bool(body.get("quiet", True))
             target = self.robot.IDLE_QUIET if quiet else self.robot.IDLE_NORMAL
             ok, out = self.robot.set_idle_interval(target)
-            self._json({"ok": ok, "quiet": quiet, "idle_interval": target, "output": out})
+            cmd_desc = ("修改 config.json idle_interval=%d → systemctl --user restart motion_main"
+                        % target)
+            self._json({"ok": ok, "quiet": quiet, "idle_interval": target, "output": out,
+                        "command": cmd_desc})
         else:
             self._json({"error": "not found"}, 404)
 
