@@ -178,14 +178,16 @@ class Robot:
         b64 = base64.b64encode(py.encode("utf-8")).decode("ascii")
         return self.shell(f"echo {b64} | base64 -d | python3", timeout=8)
 
-    def play(self, action):
-        return self._socket_send(f":Play {action}")
+    def play(self, action, frame_rate=30):
+        """播放动作。motion_main 要求 `:Play <动作名> <帧率>`（3 段，缺帧率会被静默忽略）。"""
+        return self._socket_send(f":Play {action} {int(frame_rate)}")
 
-    def play_idle(self, action):
-        return self._socket_send(f":PlayIdle {action}")
+    def play_idle(self, action, frame_rate=30):
+        """播放待机动作。格式同 :Play，需 3 段。"""
+        return self._socket_send(f":PlayIdle {action} {int(frame_rate)}")
 
     def reset(self):
-        return self._socket_send("Motion_Reset")
+        return self._socket_send(":Motion_Reset")
 
     def list_motions(self):
         r = self.shell("cat /sdcard/.config/Figurobot/data/motionList.json", timeout=8)
@@ -559,12 +561,15 @@ class Handler(BaseHTTPRequestHandler):
             action = (body.get("action") or "").strip()
             if not action:
                 return self._json({"error": "缺少 action"}, 400)
-            r = self.robot.play(action)
-            self._json({"ok": True, "action": action, "output": (r.stdout or "")[:200]})
+            frame_rate = body.get("frame_rate", 30)
+            r = self.robot.play(action, frame_rate=frame_rate)
+            self._json({"ok": True, "action": action, "frame_rate": frame_rate,
+                        "output": (r.stdout or "")[:200]})
         elif path == "/api/idle":
             action = (body.get("action") or "").strip()
-            r = self.robot.play_idle(action)
-            self._json({"ok": True, "action": action})
+            frame_rate = body.get("frame_rate", 30)
+            r = self.robot.play_idle(action, frame_rate=frame_rate)
+            self._json({"ok": True, "action": action, "frame_rate": frame_rate})
         elif path == "/api/reset":
             r = self.robot.reset()
             self._json({"ok": True, "output": (r.stdout or "")[:200]})
