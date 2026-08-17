@@ -519,10 +519,12 @@ function renderMotions() {
 
 async function playAction(name, frame_rate) {
   try {
-    await api("/api/play", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: name, frame_rate: frame_rate || 30 }) });
+    const d = await api("/api/play", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: name, frame_rate: frame_rate || 30 }) });
     playingAction = name;
     $("lblPlay").textContent = "播放: " + name; setLed("ledPlay", true);
     log(`▶ 播放动作「${name}」`, "act");
+    log(`  发送指令: ${d.command || "(未知)"}`, "sys");
+    log(`  机器反馈: ${d.response || "(无响应)"}`, d.response && d.response.includes("error") ? "err" : "sys");
     renderMotions();
     toast("正在播放：" + name);
   } catch (e) { log("播放失败: " + e.message, "err"); toast("播放失败"); }
@@ -530,9 +532,12 @@ async function playAction(name, frame_rate) {
 
 async function resetRobot() {
   try {
-    await api("/api/reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    const d = await api("/api/reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
     playingAction = null; $("lblPlay").textContent = "已复位"; setLed("ledPlay", false);
-    log("关节已复位 (Motion_Reset)", "ok"); renderMotions(); toast("已复位");
+    log("关节已复位 (Motion_Reset)", "ok");
+    log(`  发送指令: ${d.command || "(未知)"}`, "sys");
+    log(`  机器反馈: ${d.response || "(无响应)"}`, d.response && d.response.includes("error") ? "err" : "sys");
+    renderMotions(); toast("已复位");
   } catch (e) { log("复位失败: " + e.message, "err"); }
 }
 
@@ -541,13 +546,26 @@ const joints = {}; // id -> {online}
 async function scanJoints() {
   const box = $("jointList"); box.innerHTML = '<div class="hint">扫描中…</div>';
   try {
+    log("发送指令: PING ID=1..32（逐个探测在线关节）", "sys");
     const d = await api("/api/joint/scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ start: 1, end: 32 }) });
-    log("关节扫描完成 raw=" + (d.raw || "(空)"), "sys");
-    // 从响应解析在线 ID（响应帧包含 ID）
     const raw = d.raw || "";
-    const onlineIds = new Set();
-    for (let i = 0; i < raw.length - 10; i += 2) { /* 简单解析留空，主推动作播放 */ }
-    box.innerHTML = '<div class="hint">关节实时控制依赖串口空闲，当前以动作播放为主。扫描结果见日志。</div>';
+    log(`机器反馈: ${raw ? raw.length / 2 + " 字节" : "(无响应)"}`, "sys");
+    // 解析 PING 响应帧：ff00fd00 ID LenLen 55 ERR CRCCRC（每帧 11 字节 = 22 hex）
+    const results = [];
+    for (let i = 0; i + 22 <= raw.length; i += 22) {
+      const seg = raw.substr(i, 22);
+      if (!seg.startsWith("ff00fd00")) continue;
+      const id = parseInt(seg.substr(8, 2), 16);
+      const err = parseInt(seg.substr(16, 2), 16);
+      results.push({ id, err });
+    }
+    const errList = results.filter(r => r.err !== 0);
+    log(`  在线 ${results.length} 个关节，报错误码 ${errList.length} 个`, "sys");
+    for (const r of results) {
+      const name = r.err === 0 ? "OK" : `0x${r.err.toString(16).padStart(2, "0")}`;
+      log(`    #${r.id}: ${name}`, r.err === 0 ? "ok" : "warn");
+    }
+    box.innerHTML = `<div class="hint">在线 ${results.length} 个关节，报错误码 ${errList.length} 个。详见日志。</div>`;
     toast("扫描完成");
   } catch (e) { log("扫描失败: " + e.message, "err"); }
 }
@@ -565,8 +583,7 @@ function renderPoseList(joints, safety) {
   const box = $("poseList");
   const oob = new Set((safety && safety.out_of_range || []).map(x => String(x[0])));
   const offline = new Set((safety && safety.offline) || []);
-  const voltageErr = new Set((safety && safety.voltage_err) || []);
-  const otherErr = new Set((safety && safety.other_err) || []);
+  const errJoints = new Set((safety && safety.err_joints) || []);
   const ids = Object.keys(joints).sort((a, b) => Number(a) - Number(b));
   box.innerHTML = "";
   if (ids.length === 0) { box.innerHTML = '<div class="hint" style="text-align:center;padding:10px 0">无数据</div>'; return; }
@@ -578,10 +595,7 @@ function renderPoseList(joints, safety) {
     if (!j.online) {
       cls += " offline";
       angle = "无响应";
-    } else if (voltageErr.has(id)) {
-      cls += " power";
-      angle = "电压错误";
-    } else if (otherErr.has(id)) {
+    } else if (errJoints.has(id)) {
       cls += " err";
       angle = j.angle != null ? j.angle.toFixed(1) + "°" : (j.error_text || "错误");
     } else if (oob.has(id)) {
@@ -615,9 +629,6 @@ async function readPose() {
     if (lv === "safe") {
       setPoseBanner("safe", safety.level_text, `${safety.online_count}/${safety.total} 关节在线，均在安全范围`);
       log("姿态安全：可以上电", "ok");
-    } else if (lv === "power") {
-      setPoseBanner("power", safety.level_text, safety.issues.join("；"));
-      log("电源异常: " + safety.issues.join("；"), "err");
     } else if (lv === "danger") {
       setPoseBanner("danger", safety.level_text, safety.issues.join("；"));
       log("姿态危险: " + safety.issues.join("；"), "err");
