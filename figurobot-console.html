@@ -418,6 +418,8 @@ async function connectBridge() {
     if (st.connected) { $("lblRobot").textContent = "机器人在线"; setLed("ledRobot", true); }
     else { $("lblRobot").textContent = "机器人离线"; setLed("ledRobot", false); }
     log("已连接桥接服务 " + API, "ok");
+    log("  发送指令: GET /api/status（查询设备连接状态）", "sys");
+    log("  机器反馈: " + (st.connected ? "设备在线" : "设备离线") + " · 序列号 " + (st.serial || "?") + " · " + (st.protocol || ""), "sys");
     await loadMotions();
     await refreshStandby();
   } catch (e) {
@@ -429,6 +431,7 @@ async function connectBridge() {
 
 async function loadMotions() {
   try {
+    log("发送指令: GET /api/motions（读取动作列表 motionList.json）", "sys");
     const d = await api("/api/motions");
     motions = d.motions || [];
     $("motionCount").textContent = `（${motions.length} 个动作）`;
@@ -471,6 +474,8 @@ async function toggleStandby() {
     standbyQuiet = !!d.quiet;
     renderStandby();
     log(next ? "已进入安静待机：自动待机动作关闭，机器人不再乱动" : "已恢复自动待机动作", "ok");
+    log(`  发送指令: ${d.command || "(未知)"}`, "sys");
+    log(`  执行结果: ${d.output || "(无)"}`, "sys");
     toast(next ? "已进入安静待机" : "已恢复自动待机");
   } catch (e) {
     log("切换待机失败: " + e.message, "err");
@@ -546,10 +551,15 @@ const joints = {}; // id -> {online}
 async function scanJoints() {
   const box = $("jointList"); box.innerHTML = '<div class="hint">扫描中…</div>';
   try {
-    log("发送指令: PING ID=1..32（逐个探测在线关节）", "sys");
+    log("发送指令: PING 帧 ×32（ID=1..32，逐个探测在线关节）", "sys");
     const d = await api("/api/joint/scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ start: 1, end: 32 }) });
+    if (d.sent_frames && d.sent_frames.length) {
+      log(`  → PING 帧示例: ${d.sent_frames[0]}`, "sys");
+      log(`  → 共发送 ${d.sent_frames.length} 帧`, "sys");
+    }
     const raw = d.raw || "";
     log(`机器反馈: ${raw ? raw.length / 2 + " 字节" : "(无响应)"}`, "sys");
+    if (raw) log(`  ← 原始响应: ${raw}`, "sys");
     // 解析 PING 响应帧：ff00fd00 ID LenLen 55 ERR CRCCRC（每帧 11 字节 = 22 hex）
     const results = [];
     for (let i = 0; i + 22 <= raw.length; i += 22) {
@@ -615,8 +625,19 @@ async function readPose() {
   const btn = $("btnReadPose");
   btn.disabled = true;
   setPoseBanner("", "读取中…", "正在通过串口读取所有关节");
+  log("发送指令: PING 全关节 ID=" + "1..32" + "（探测在线状态）", "sys");
   try {
     const d = await api("/api/pose", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    const dbg = d.debug || {};
+    // 打印具体发出的指令和机器反馈
+    if (dbg.ping_sample) {
+      log(`  → PING 帧 ×${dbg.ping_count} 示例: ${dbg.ping_sample}`, "sys");
+      log(`  ← PING 响应 ${dbg.ping_response_hex ? dbg.ping_response_hex.length / 2 + " 字节" : "无"}`, "sys");
+    }
+    if (dbg.read_sample) {
+      log(`  → READ 帧 ×${dbg.read_count} (寄存器 ${dbg.read_addr}) 示例: ${dbg.read_sample}`, "sys");
+      log(`  ← READ 响应 ${dbg.read_response_hex ? dbg.read_response_hex.length / 2 + " 字节" : "无"}`, "sys");
+    }
     if (d.error) {
       setPoseBanner("danger", "读取失败", d.error);
       log("姿态读取失败: " + d.error, "err");
@@ -649,8 +670,10 @@ async function readPose() {
 async function poseReset() {
   if (!confirm("确认执行姿态复位？机器人将回到安全姿态（Motion_Reset）。")) return;
   try {
-    await api("/api/reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    const d = await api("/api/reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
     log("姿态复位已触发 (Motion_Reset)", "ok");
+    log(`  发送指令: ${d.command || "(未知)"}`, "sys");
+    log(`  机器反馈: ${d.response || "(无响应)"}`, d.response && d.response.includes("error") ? "err" : "sys");
     toast("姿态复位中…");
     playingAction = null; $("lblPlay").textContent = "已复位"; setLed("ledPlay", false);
     renderMotions();
