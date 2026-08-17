@@ -9,7 +9,8 @@ import os, sys, time, termios, fcntl, glob, json
 
 
 def crc16(d):
-    c = 0xFFFF
+    """CRC-16 IBM/ANSI (poly 0x8005, 初始值 0，官方 demo 标准)。"""
+    c = 0
     for b in d:
         c ^= (b << 8) & 0xFFFF
         for _ in range(8):
