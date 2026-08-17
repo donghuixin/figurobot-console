@@ -92,8 +92,11 @@ angle = raw × 360.0 / 4095     (raw: 0–4095 → 0–360°)
 | state_manager | `/userdata/state_manager/` | 状态机、KWS 唤醒 |
 | robotConnectServer | — | 配网服务 |
 
-- **动作播放核心**：Unix socket `/tmp/motion_main_socket`，命令：
-  - `:Play <动作名>` / `:PlayIdle` / `:ListMotions` / `Motion_Reset` / `:Exit`
+- **动作播放核心**：Unix socket `/tmp/motion_main_socket`，命令（**格式严格，缺参数会被静默忽略**）：
+  - `:Play <动作名> <帧率>`（3 段，如 `:Play 你好 30`）
+  - `:PlayIdle <动作名> <帧率>`（3 段）
+  - `:Motion_Reset`（带冒号）、`:ListMotions`、`:Exit`、`:no_robot`、`:has_robot`
+  - `:Play`/`:PlayIdle`/`:Motion_Reset` 需串口授权（`serial_active`），未授权返回 `{"type":"error","message":"serial not ready"}`
 - 动作 CSV 位于 `/sdcard/.config/Figurobot/csv_folder/`，动作列表 `motionList.json`
 - 零点偏移：`/userdata/data/zero.ini`（INI 格式，`N\id=X` + `N\zeroValue=Y`）
 
@@ -134,7 +137,7 @@ su - lckfb -c 'XDG_RUNTIME_DIR=/run/user/1000 systemctl --user status motion_mai
 | 症状 | 排查 |
 |---|---|
 | 网页连不上桥接 | 检查 8888 端口、adb devices |
-| 动作不播放 | 查 motion_main 日志，确认串口 `connect_serial` 成功 |
+| 动作不播放 | 命令格式须为 `:Play 动作名 帧率`（3 段）；缺帧率会被静默忽略。桥接已处理，直接点动作即可 |
 | 上电一直「乱动」 | 自动待机动作（idle_interval=5），控制台「待机开关」关闭即可 |
 | 关节全离线/报 0x10 | 停 motion_main 后 Ping；0x10 官方未定义、不影响驱动，含义待官方确认 |
 | 自检报错 | 查 rk_serial_stm32 日志（硬件自检硬编码匹配设备名） |
