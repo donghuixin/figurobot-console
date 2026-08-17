@@ -86,7 +86,8 @@ SERVO_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
 
 
 def crc16(data):
-    crc = 0xFFFF
+    """CRC-16 IBM/ANSI (poly 0x8005, 初始值 0)。官方 demo 用 init=0，非 0xFFFF！"""
+    crc = 0
     for b in data:
         crc ^= (b << 8) & 0xFFFF
         for _ in range(8):
@@ -94,11 +95,53 @@ def crc16(data):
     return [crc & 0xFF, (crc >> 8) & 0xFF]
 
 
+# 字节填充（byte stuffing）：0xFF 0x00 0xFD → 0xFF 0x00 0xFD 0xFD
+_MARKER = bytes([0xFF, 0x00, 0xFD])
+_STUFFED = bytes([0xFF, 0x00, 0xFD, 0xFD])
+
+
+def _apply_stuffing(data):
+    result = bytearray()
+    i = 0
+    while i < len(data):
+        if data[i:i + 3] == _MARKER:
+            result += _STUFFED
+            i += 3
+        else:
+            result.append(data[i])
+            i += 1
+    return bytes(result)
+
+
+def _remove_stuffing(data):
+    result = bytearray()
+    i = 0
+    while i < len(data):
+        if data[i:i + 4] == _STUFFED:
+            result += _MARKER
+            i += 4
+        else:
+            result.append(data[i])
+            i += 1
+    return bytes(result)
+
+
 def build_frame(dev_id, instruction, params):
-    length = len(params) + 3
-    body = list(FRAME_HEADER) + [dev_id & 0xFF, length & 0xFF, (length >> 8) & 0xFF,
-                                 instruction & 0xFF] + list(params)
-    return body + crc16(body)
+    """按官方 _build_packet 实现：对 instruction+params 做 byte stuffing，CRC init=0。"""
+    params = bytes(params)
+    payload = bytes([instruction]) + params
+    if _MARKER in params:
+        stuffed = _apply_stuffing(payload)
+    else:
+        stuffed = payload
+    length = len(stuffed) + 2  # +2 for CRC
+    partial = bytearray(FRAME_HEADER)  # FF 00 FD 00
+    partial.append(dev_id & 0xFF)
+    partial.append(length & 0xFF)
+    partial.append((length >> 8) & 0xFF)
+    partial += stuffed
+    partial += bytes(crc16(bytes(partial)))
+    return list(partial)
 
 
 def build_read(dev_id, addr, length):
@@ -333,7 +376,7 @@ class Robot:
     # ---- 姿态读取 + 上电安全判断 ----
     @staticmethod
     def _parse_frames(hexstr):
-        """解析串口读回的字节流，返回 [(id, error, data_bytes)]"""
+        """解析串口读回的字节流，返回 [(id, error, data_bytes)]（data_bytes 已去填充）。"""
         try:
             buf = bytes.fromhex(hexstr)
         except Exception:
@@ -341,17 +384,18 @@ class Robot:
         frames = []
         i, n = 0, len(buf)
         while i <= n - 9:
-            if buf[i] == 0xFF and buf[i + 1] == 0x00 and buf[i + 2] == 0xFD and buf[i + 3] == 0x00:
+            if buf[i:i + 4] == b'\xff\x00\xfd\x00':
                 did = buf[i + 4]
                 ln = buf[i + 5] | (buf[i + 6] << 8)
                 total = 7 + ln
                 if i + total > n:
                     break
                 inst = buf[i + 7]
-                params = buf[i + 8:i + total - 2]
                 if inst == 0x55:  # STATUS
-                    err = params[0] if params else 0
-                    frames.append((did, err, params[1:]))
+                    err = buf[i + 8]
+                    params_raw = buf[i + 9:i + total - 2]
+                    params = _remove_stuffing(params_raw)
+                    frames.append((did, err, params))
                 i += total
             else:
                 i += 1
