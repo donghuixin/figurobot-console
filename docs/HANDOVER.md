@@ -66,18 +66,20 @@ angle = raw × 360.0 / 4095     (raw: 0–4095 → 0–360°)
 
 ### 错误码（Status 包 error 字节）
 
-| bit | 值 | 含义 |
-|---|---|---|
-| 0 | 0x01 | Result Fail |
-| 1 | 0x02 | Instruction Error |
-| 2 | 0x04 | Data Range Error |
-| 3 | 0x08 | Data Length Error |
-| 4 | **0x10** | **Input Voltage Error（输入电压超出范围）** |
-| 5 | 0x20 | Data Limit Error / 过温 |
-| 6 | 0x40 | 过载 |
-| 7 | 0x80 | Alert |
+官方 demo `servo_figurobot_v2.py` 的 `_ERROR_NAMES` 只定义以下**枚举值**（非 Dynamixel 位掩码）：
 
-> ⚠️ **关键**：舵机在 `0x10` 电压错误状态下，会拒绝一切 Read/SyncRead，**只响应 Ping**。因此表现为「全部离线」，实际是电源问题，不是通信问题。
+| 值 | 含义 |
+|---|---|
+| 0x01 | Result Fail |
+| 0x02 | Instruction Error |
+| 0x03 | CRC Error |
+| 0x04 | Data Range Error |
+| 0x05 | Data Length Error |
+| 0x06 | Data Limit Error |
+| 0x07 | Access Error |
+| 0x10 | **未定义**（27 个舵机实测会集体报此码，但能正常驱动；含义待官方确认） |
+
+> ⚠️ **关键**：舵机报 `0x10` 时，Read/SyncRead 可能不返回数据（只响应 Ping），表现为「离线」。但**不影响驱动播放动作**，不是通信/电源故障。
 
 ## 3. 软件架构
 
@@ -133,12 +135,20 @@ su - lckfb -c 'XDG_RUNTIME_DIR=/run/user/1000 systemctl --user status motion_mai
 |---|---|
 | 网页连不上桥接 | 检查 8888 端口、adb devices |
 | 动作不播放 | 查 motion_main 日志，确认串口 `connect_serial` 成功 |
-| 关节全离线 | 停 motion_main 后 Ping，看是否报 0x10 电压错误 |
-| 电压错误 | 检查电池电量 / 电源适配器 / 电源线 |
+| 上电一直「乱动」 | 自动待机动作（idle_interval=5），控制台「待机开关」关闭即可 |
+| 关节全离线/报 0x10 | 停 motion_main 后 Ping；0x10 官方未定义、不影响驱动，含义待官方确认 |
 | 自检报错 | 查 rk_serial_stm32 日志（硬件自检硬编码匹配设备名） |
 
-## 7. 逆向产物与参考
+## 7. 待机开关实现
+
+「待机开关」通过修改 motion_main `config.json` 的 `idle_interval` 实现：
+- 自动待机（默认）：`idle_interval=5`，5 秒无命令随机播 Idle 动作
+- 安静待机：`idle_interval=86400`，基本不再自动乱动
+
+桥接服务 API：`GET /api/standby`（查状态）、`POST /api/standby {quiet: bool}`（切换，改配置并重启 motion_main）。不清空 Idle 动作库。
+
+## 8. 逆向产物与参考
 
 - 反编译产物：`.workbuddy/robot_bin/`（Main / rk_serial_main / robot_server / state_manager）
 - 官方 demo 源码：`发货资料分类_20260708/控制盒/demo/motor/python_motion_demo_*/python_motion_demo/servo_figurobot_v2.py`
-- 官方文档：`发货资料分类_20260708/共用资料/文档/`（protocol.pdf、servo_useage_position_*.pdf）
+- 官方文档：`发货资料分类_20260708/共用资料/文档/`（protocol.pdf、servo_useage_position_*.pdf、servo_useage_torque.md）
