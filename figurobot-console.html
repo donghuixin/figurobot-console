@@ -512,14 +512,14 @@ function renderMotions() {
     const card = document.createElement("div");
     card.className = "motion-card" + (m.is_idle ? " idle" : "") + (playingAction === name ? " playing" : "");
     card.innerHTML = `<div class="icon">${iconFor(name)}</div><div class="name">${name}</div><div class="fps">${m.frame_rate} fps</div>`;
-    card.addEventListener("click", () => playAction(name));
+    card.addEventListener("click", () => playAction(name, m.frame_rate));
     grid.appendChild(card);
   }
 }
 
-async function playAction(name) {
+async function playAction(name, frame_rate) {
   try {
-    await api("/api/play", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: name }) });
+    await api("/api/play", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: name, frame_rate: frame_rate || 30 }) });
     playingAction = name;
     $("lblPlay").textContent = "播放: " + name; setLed("ledPlay", true);
     log(`▶ 播放动作「${name}」`, "act");
