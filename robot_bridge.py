@@ -197,6 +197,47 @@ class Robot:
     def refresh_motions(self):
         self._socket_send(":ListMotions")
 
+    # ---- 待机（自动 idle 动作）开关 ----
+    MOTION_MAIN_CONFIG = "/userdata/.figurobot/motion_main/config.json"
+    IDLE_NORMAL = 5        # 正常待机：5 秒无命令自动播随机 Idle 动作
+    IDLE_QUIET = 86400     # 安静待机：24 小时（基本不再自动乱动）
+
+    def _exec_python(self, py):
+        """在设备上用 python3 执行一段代码（base64 传参，绕开 shell 引号问题）。"""
+        b64 = base64.b64encode(py.encode("utf-8")).decode("ascii")
+        return self.shell(f"echo {b64} | base64 -d | python3", timeout=15)
+
+    def get_idle_interval(self):
+        """读取 motion_main 当前的 idle_interval。返回 int，失败返回 None。"""
+        py = (
+            "import json;"
+            f"c=json.load(open('{self.MOTION_MAIN_CONFIG}'));"
+            "print(c.get('idle_interval'))"
+        )
+        r = self._exec_python(py)
+        try:
+            return int((r.stdout or "").strip())
+        except Exception:
+            return None
+
+    def set_idle_interval(self, seconds):
+        """修改 motion_main 的 idle_interval 并重启服务。返回 (ok, output)。"""
+        py = (
+            "import json;"
+            f"p='{self.MOTION_MAIN_CONFIG}';"
+            "c=json.load(open(p));"
+            f"c['idle_interval']={int(seconds)};"
+            "json.dump(c,open(p,'w'),indent=4,ensure_ascii=False);"
+            "print('set idle_interval=%d' % c['idle_interval'])"
+        )
+        r = self._exec_python(py)
+        out = (r.stdout or "").strip()
+        # 重启 motion_main 使配置生效（systemd user 服务，需 lckfb 身份）
+        restart = self.shell(
+            "su - lckfb -c 'XDG_RUNTIME_DIR=/run/user/1000 systemctl --user restart motion_main'",
+            timeout=20)
+        return ("set idle_interval" in out), out + " | restart rc=%s" % restart.returncode
+
     # ---- 底层关节控制（Dynamixel v2，通过串口，纯 Python 实现，不依赖 pyserial） ----
     _SERIAL_EXEC_REMOTE = "/tmp/figurobot_serial_exec.py"
 
@@ -502,6 +543,12 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"error": "无法读取动作列表"}, 500)
             else:
                 self._json({"count": len(motions), "motions": motions})
+        elif path == "/api/standby":
+            interval = self.robot.get_idle_interval()
+            quiet = interval is not None and interval >= 60
+            self._json({"ok": True, "idle_interval": interval, "quiet": quiet,
+                        "normal_interval": self.robot.IDLE_NORMAL,
+                        "quiet_interval": self.robot.IDLE_QUIET})
         else:
             self._json({"error": "not found"}, 404)
 
@@ -552,6 +599,11 @@ class Handler(BaseHTTPRequestHandler):
                             "zero_values": zero_values,
                             "limits": {"min_angle": round(MIN_GOAL_TICK * DEG_MAX / POS_MAX, 2),
                                        "max_angle": round(MAX_GOAL_TICK * DEG_MAX / POS_MAX, 2)}})
+        elif path == "/api/standby":
+            quiet = bool(body.get("quiet", True))
+            target = self.robot.IDLE_QUIET if quiet else self.robot.IDLE_NORMAL
+            ok, out = self.robot.set_idle_interval(target)
+            self._json({"ok": ok, "quiet": quiet, "idle_interval": target, "output": out})
         else:
             self._json({"error": "not found"}, 404)
 
