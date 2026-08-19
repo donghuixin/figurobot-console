@@ -172,6 +172,120 @@
   input[type="range"]::-moz-range-progress { height: 6px; border-radius: 4px; background: rgba(34,211,238,0.7); }
   input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid var(--cyan); }
 
+  .console-tabs {
+    display: flex; gap: 6px; align-items: center; padding: 5px; border-radius: 14px;
+    background: rgba(255,255,255,0.035); border: 1px solid var(--stroke); width: max-content;
+    max-width: 100%; overflow-x: auto;
+  }
+  .tab-btn {
+    min-height: 34px; padding: 7px 13px; border-radius: 10px; border: 1px solid transparent;
+    background: transparent; color: var(--text-dim); font-family: inherit; font-size: 12px;
+    display: inline-flex; align-items: center; gap: 7px; cursor: pointer; white-space: nowrap;
+  }
+  .tab-btn:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+  .tab-btn.active { color: var(--cyan); border-color: rgba(34,211,238,0.38); background: rgba(34,211,238,0.12); }
+  .tab-panel { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .tab-panel[hidden] { display: none; }
+
+  .joint-mini-status {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 10px 12px; border-radius: 12px; border: 1px solid var(--stroke);
+    background: rgba(255,255,255,0.025); margin-bottom: 10px;
+  }
+  .joint-mini-status strong { font-size: 12px; }
+  .joint-mini-status span { font-size: 11px; color: var(--text-faint); }
+  .joint-mini-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; margin-top: 8px; }
+  .joint-mini-chip {
+    min-height: 22px; border-radius: 7px; border: 1px solid var(--stroke); display: grid; place-items: center;
+    font-family: var(--mono); font-size: 10.5px; color: var(--text-faint); background: rgba(255,255,255,0.025);
+  }
+  .joint-mini-chip.on { color: var(--green); border-color: rgba(52,211,153,0.45); background: rgba(52,211,153,0.08); }
+  .joint-mini-chip.warn { color: var(--amber); border-color: rgba(251,191,36,0.45); background: rgba(251,191,36,0.08); }
+  .joint-mini-chip.off { color: var(--red); border-color: rgba(251,113,133,0.35); background: rgba(251,113,133,0.06); }
+  .joint-mini-chip.empty { opacity: .38; }
+
+  .joint-control-card { overflow: hidden; }
+  .joint-control-head {
+    display: flex; align-items: center; gap: 12px; justify-content: space-between; margin-bottom: 12px;
+  }
+  .joint-control-head h2 { margin: 0; }
+  .joint-badge {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px;
+    border: 1px solid var(--stroke); color: var(--text-faint); font-family: var(--mono); font-size: 10.5px;
+    text-transform: none; letter-spacing: 0; margin-left: 6px;
+  }
+  .joint-badge.on { color: var(--green); border-color: rgba(52,211,153,0.44); background: rgba(52,211,153,0.08); }
+  .takeover-panel {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px;
+    padding: 13px 14px; border-radius: 13px; border: 1px solid var(--stroke);
+    background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02));
+    margin-bottom: 12px;
+  }
+  .takeover-title { font-size: 13px; font-weight: 650; margin-bottom: 3px; }
+  .takeover-copy { font-size: 11.5px; line-height: 1.55; color: var(--text-faint); }
+  .takeover-panel.on { border-color: rgba(52,211,153,0.42); background: rgba(52,211,153,0.07); }
+  .joint-toolbar, .preset-toolbar, .joint-stats {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px;
+  }
+  .joint-toolbar .btn, .preset-toolbar .btn { min-height: 36px; padding: 8px 11px; font-size: 12px; }
+  .preset-toolbar input, .preset-toolbar select { width: auto; min-width: 170px; height: 36px; padding: 7px 10px; font-size: 12px; }
+  .drag-control-bar {
+    display: flex; flex-wrap: wrap; gap: 9px; align-items: center; margin-bottom: 10px;
+    padding: 9px 11px; border-radius: 12px; border: 1px solid var(--stroke);
+    background: rgba(0,0,0,0.14);
+  }
+  .drag-toggle {
+    display: inline-flex; align-items: center; gap: 8px; color: var(--text); font-size: 12px;
+    min-height: 32px;
+  }
+  .drag-control-bar label.field { margin: 0; display: inline-flex; align-items: center; gap: 6px; }
+  .drag-control-bar select { width: auto; min-width: 82px; height: 32px; padding: 5px 8px; font-size: 12px; }
+  .drag-limit-hint { color: var(--text-faint); font-size: 11px; line-height: 1.5; }
+  .joint-stats {
+    justify-content: space-between; border: 1px solid var(--stroke); border-radius: 12px;
+    padding: 9px 11px; background: rgba(0,0,0,0.18); color: var(--text-dim); font-size: 11.5px;
+  }
+  .joint-stats b { color: var(--text); font-weight: 600; }
+  .servo-grid { display: flex; flex-direction: column; gap: 7px; max-height: 62vh; overflow-y: auto; padding-right: 2px; }
+  .servo-grid::-webkit-scrollbar { width: 8px; }
+  .servo-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 8px; }
+  .servo-row {
+    display: grid; grid-template-columns: 108px minmax(180px, 1fr) 92px 116px 148px;
+    gap: 10px; align-items: center; min-height: 62px; padding: 10px 12px; border-radius: 12px;
+    border: 1px solid var(--stroke); background: rgba(255,255,255,0.025); flex: 0 0 auto;
+  }
+  .servo-row.placeholder { opacity: .44; background: rgba(255,255,255,0.015); }
+  .servo-row.offline { border-color: rgba(251,113,133,0.28); }
+  .servo-row.oob { border-color: rgba(251,191,36,0.5); background: rgba(251,191,36,0.055); }
+  .servo-row.mismatch { box-shadow: inset 3px 0 0 rgba(251,191,36,0.9); }
+  .servo-row.writing { border-color: rgba(34,211,238,0.5); }
+  .servo-meta { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .servo-status { width: 9px; height: 9px; border-radius: 50%; background: var(--text-faint); flex-shrink: 0; }
+  .servo-status.on { background: var(--green); box-shadow: 0 0 9px var(--green); }
+  .servo-status.warn { background: var(--amber); box-shadow: 0 0 9px var(--amber); }
+  .servo-status.off { background: var(--red); box-shadow: 0 0 9px var(--red); }
+  .servo-id { font-family: var(--mono); color: var(--cyan); font-size: 12px; font-weight: 700; }
+  .servo-name { font-size: 11px; color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .servo-slider { min-width: 0; }
+  .servo-tick { font-family: var(--mono); color: var(--text-faint); font-size: 10.5px; margin-top: 2px; }
+  .servo-number input { height: 34px; font-family: var(--mono); text-align: right; }
+  .servo-actual {
+    min-height: 34px; border-radius: 10px; border: 1px solid var(--stroke);
+    display: flex; align-items: center; justify-content: center; font-family: var(--mono);
+    font-size: 12px; color: var(--text-dim); background: rgba(0,0,0,0.18);
+  }
+  .servo-actual.mismatch { color: var(--amber); border-color: rgba(251,191,36,0.4); background: rgba(251,191,36,0.07); }
+  .servo-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+  .servo-action { min-height: 34px; padding: 7px 9px; font-size: 12px; }
+  @media (max-width: 820px) {
+    .servo-row { grid-template-columns: 1fr; gap: 8px; }
+    .servo-meta { justify-content: space-between; }
+    .servo-actions { grid-template-columns: 1fr; }
+    .drag-control-bar { align-items: stretch; }
+    .drag-control-bar label.field, .drag-control-bar select, .drag-toggle { width: 100%; }
+    .preset-toolbar input, .preset-toolbar select { width: 100%; }
+  }
+
   .switch { position: relative; display: inline-block; width: 40px; height: 22px; cursor: pointer; }
   .switch input { opacity: 0; width: 0; height: 0; }
   .switch .track { position: absolute; inset: 0; border-radius: 999px; background: rgba(255,255,255,0.1); border: 1px solid var(--stroke-strong); transition: background .2s; }
@@ -298,13 +412,18 @@
     </div>
 
     <div class="card glass">
-      <h2><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1l2.1-2.1M17 7l2.1-2.1"/></svg>关节实时控制</h2>
-      <div class="btn-row" style="margin-bottom:10px">
-        <button class="btn" id="btnJointScan" style="flex:1">扫描关节</button>
-        <button class="btn danger" id="btnJointDisable">断电</button>
+      <h2><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1l2.1-2.1M17 7l2.1-2.1"/></svg>关节控制</h2>
+      <div class="joint-mini-status">
+        <div><strong id="jointMiniTitle">未接管</strong><span id="jointMiniSub">  27 路目标角控制</span></div>
+        <span class="dot" id="jointMiniDot"></span>
       </div>
-      <div class="joint-list" id="jointList"><div class="hint" style="text-align:center;padding:10px 0">点击「扫描关节」发现在线电机</div></div>
-      <div class="hint">实时关节需串口空闲（motion_main 动作播放时自动切换，无需手动处理）。</div>
+      <div class="btn-row" style="margin-bottom:10px">
+        <button class="btn primary" id="btnOpenJointTab" style="flex:1">打开关节控制</button>
+        <button class="btn" id="btnJointScan">扫描</button>
+        <button class="btn danger" id="btnJointDisable">全失能</button>
+      </div>
+      <div class="joint-list" id="jointList"><div class="hint" style="text-align:center;padding:10px 0">扫描或读取姿态后显示在线摘要</div></div>
+      <div class="hint">接管模式会关闭自动待机并复位；进入后可逐个电机独立使能、独立下发，退出时会全关节失能并恢复自动待机。</div>
     </div>
 
     <div class="card glass">
@@ -346,6 +465,16 @@
 
   <!-- ============ 主区 ============ -->
   <main style="display:flex;flex-direction:column;gap:14px;min-width:0">
+    <div class="console-tabs" role="tablist" aria-label="控制台视图">
+      <button class="tab-btn active" id="tabBtnMotion" role="tab" aria-selected="true" aria-controls="tabMotion" data-tab="motion">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>动作控制
+      </button>
+      <button class="tab-btn" id="tabBtnJoints" role="tab" aria-selected="false" aria-controls="tabJoints" data-tab="joints">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1l2.1-2.1M17 7l2.1-2.1"/></svg>关节控制
+      </button>
+    </div>
+
+    <section class="tab-panel active" id="tabMotion" role="tabpanel" aria-labelledby="tabBtnMotion">
     <div class="glass card">
       <h2><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>动作库 <span id="motionCount" style="color:var(--text-faint);text-transform:none;letter-spacing:0;margin-left:2px"></span></h2>
       <div class="motion-toolbar">
@@ -379,6 +508,77 @@
         </button>
       </div>
     </div>
+    </section>
+
+    <section class="tab-panel" id="tabJoints" role="tabpanel" aria-labelledby="tabBtnJoints" hidden>
+      <div class="glass card joint-control-card">
+        <div class="joint-control-head">
+          <h2><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg>关节控制 <span class="joint-badge" id="jointTakeoverBadge">未接管</span></h2>
+          <button class="btn ghost" id="btnJointReadback">读取回显</button>
+        </div>
+
+        <div class="takeover-panel" id="jointTakeoverPanel">
+          <div>
+            <div class="takeover-title">接管模式</div>
+            <div class="takeover-copy" id="jointTakeoverState">关闭时只编辑目标值，不写舵机。开启后会关闭自动待机并复位；每个电机需单独使能和下发。</div>
+          </div>
+          <label class="switch" title="开启或退出关节接管模式">
+            <input type="checkbox" id="jointTakeoverSwitch">
+            <span class="track"></span>
+          </label>
+        </div>
+
+        <div class="joint-toolbar">
+          <button class="btn" id="btnJointCenter">全居中</button>
+          <button class="btn primary" id="btnJointApplyAll">批量下发</button>
+          <button class="btn quiet" id="btnJointEnableAll">全使能</button>
+          <button class="btn danger" id="btnJointDisableAll">全失能</button>
+          <button class="btn" id="btnJointScanMain">扫描关节</button>
+        </div>
+
+        <div class="drag-control-bar">
+          <label class="drag-toggle" title="开启后，拖动滑块时会按限频/限速连续写入当前这一颗电机">
+            <input type="checkbox" id="jointDragDirect" checked>拖动直控
+          </label>
+          <label class="field">频率
+            <select id="jointDragRate">
+              <option value="4">4 Hz</option>
+              <option value="6">6 Hz</option>
+              <option value="8" selected>8 Hz</option>
+              <option value="10">10 Hz</option>
+              <option value="12">12 Hz</option>
+            </select>
+          </label>
+          <label class="field">单步
+            <select id="jointDragStep">
+              <option value="3">3°</option>
+              <option value="6" selected>6°</option>
+              <option value="10">10°</option>
+              <option value="15">15°</option>
+            </select>
+          </label>
+          <span class="drag-limit-hint" id="jointDragLimitHint">软限流：50–3600 tick 限位 + 8 Hz 下发 + 每帧最大 6°。</span>
+        </div>
+
+        <div class="preset-toolbar">
+          <input type="text" id="jointPresetName" placeholder="预设名称">
+          <button class="btn" id="btnJointSavePreset">保存并导出</button>
+          <select id="jointPresetSelect" title="本机保存的关节预设"></select>
+          <button class="btn primary" id="btnJointLoadPreset">加载预设</button>
+          <button class="btn ghost" id="btnJointImportPreset">导入 JSON</button>
+          <button class="btn ghost" id="btnJointDeletePreset">删除</button>
+          <input type="file" id="jointPresetFile" accept=".json,application/json" hidden>
+        </div>
+
+        <div class="joint-stats">
+          <span id="jointOnlineSummary"><b>在线</b> 尚未扫描</span>
+          <span id="jointMismatchSummary"><b>偏差</b> 等待读回</span>
+        </div>
+
+        <div class="servo-grid" id="jointControlGrid"></div>
+        <div class="hint">滑块拖动时只更新目标值，松手或数值框提交后才下发。目标会自动限位到 50–3600 tick；黄色边线表示目标与实际角度有明显偏差。</div>
+      </div>
+    </section>
 
     <div class="glass card">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
@@ -563,6 +763,12 @@ function renderMotions() {
 }
 
 async function playAction(name, frame_rate) {
+  if (jointTakeoverOn) {
+    log(`接管模式下已阻止动作播放「${name}」；请先退出关节接管`, "warn");
+    toast("请先退出接管模式");
+    switchConsoleTab("joints");
+    return;
+  }
   try {
     const d = await api("/api/play", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: name, frame_rate: frame_rate || 30 }) });
     playingAction = name;
@@ -587,12 +793,415 @@ async function resetRobot() {
 }
 
 // ---------- 关节控制 ----------
-const joints = {}; // id -> {online}
+const SERVO_IDS = [1, 2, 3, 4, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30];
+const ALL_JOINT_IDS = Array.from({ length: 32 }, (_, i) => i + 1);
+const SERVO_ID_SET = new Set(SERVO_IDS);
+const MIN_GOAL_TICK = 50;
+const MAX_GOAL_TICK = 3600;
+const CENTER_TICK = 2048;
+const POS_MAX = 4095;
+const DEG_MAX = 360;
+const JOINT_WRITE_GAP_MS = 70;
+const JOINT_VERIFY_TOLERANCE_DEG = 4;
+const JOINT_PRESET_KEY = "figurobot.jointPresets.v1";
+const DXL_ERROR_NAMES = {
+  0x00: "正常", 0x01: "结果失败", 0x02: "指令错误", 0x03: "CRC 错误",
+  0x04: "数据范围错误", 0x05: "数据长度错误", 0x06: "数据限制错误", 0x07: "访问错误",
+};
+const JOINT_NAMES = {
+  1: "头颈 A", 2: "头颈 B", 3: "左肩 A", 4: "左肩 B", 6: "左肘", 7: "右肩 A", 8: "左腕",
+  9: "右肩 B", 11: "右肘", 12: "腰 A", 13: "右腕", 14: "腰 B", 15: "腰 C", 16: "腰 D", 17: "腰 E",
+  19: "左髋 A", 20: "右髋 A", 21: "左髋 B", 22: "右髋 B", 23: "左膝", 24: "右膝",
+  25: "左踝 A", 26: "右踝 A", 27: "左踝 B", 28: "右踝 B", 29: "左脚", 30: "右脚",
+};
+const joints = {};
+let jointTakeoverOn = false;
+let jointActionBusy = false;
+let jointLiveTimer = null;
+let jointLastReadAt = null;
+let jointDragDirect = true;
+let jointDragHz = 8;
+let jointDragMaxStepDeg = 6;
+const jointDragState = {};
+
+for (const id of ALL_JOINT_IDS) {
+  joints[id] = {
+    installed: SERVO_ID_SET.has(id),
+    online: null,
+    errorCode: null,
+    errorText: "",
+    targetDeg: tickToAngle(CENTER_TICK),
+    targetTick: CENTER_TICK,
+    actualDeg: null,
+    actualTick: null,
+    enabled: false,
+    userEdited: false,
+    writing: false,
+  };
+}
+
+function delay(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+function tickToAngle(tick) { return Number(tick) * DEG_MAX / POS_MAX; }
+function rawAngleToTick(deg) { return Math.round(Number(deg) * POS_MAX / DEG_MAX); }
+function clampTick(tick) { return Math.min(MAX_GOAL_TICK, Math.max(MIN_GOAL_TICK, Math.round(tick))); }
+function normaliseAngle(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return tickToAngle(CENTER_TICK);
+  return Math.min(360, Math.max(0, n));
+}
+function commandFromAngle(deg) {
+  const raw = rawAngleToTick(normaliseAngle(deg));
+  const tick = clampTick(raw);
+  return { raw, tick, angle: tickToAngle(tick), clamped: raw !== tick };
+}
+function formatAngle(value) { return Number.isFinite(Number(value)) ? `${Number(value).toFixed(1)}°` : "—"; }
+function formatTick(value) { return Number.isFinite(Number(value)) ? `${Math.round(Number(value))} tick` : "—"; }
+function errorText(code) {
+  if (code == null) return "";
+  return DXL_ERROR_NAMES[code] || `未定义(0x${code.toString(16).padStart(2, "0").toUpperCase()})`;
+}
+function angleGap(id) {
+  const s = joints[id];
+  if (!s || s.actualDeg == null) return null;
+  return Math.abs(Number(s.actualDeg) - commandFromAngle(s.targetDeg).angle);
+}
+function installedIds(ids = SERVO_IDS) { return ids.filter(id => joints[id] && joints[id].installed); }
+function anyJointWriting() { return SERVO_IDS.some(id => joints[id].writing); }
+function moveToward(current, target, step) {
+  if (!Number.isFinite(current)) return target;
+  const delta = target - current;
+  if (Math.abs(delta) <= step) return target;
+  return current + Math.sign(delta) * step;
+}
+
+function renderDragLimitHint() {
+  $("jointDragLimitHint").textContent = `软限流（非硬件电流寄存器）：50–3600 tick 限位 + ${jointDragHz} Hz 下发 + 每帧最大 ${jointDragMaxStepDeg}°。`;
+}
+
+function switchConsoleTab(name) {
+  const isJoints = name === "joints";
+  $("tabMotion").hidden = isJoints;
+  $("tabJoints").hidden = !isJoints;
+  $("tabBtnMotion").classList.toggle("active", !isJoints);
+  $("tabBtnJoints").classList.toggle("active", isJoints);
+  $("tabBtnMotion").setAttribute("aria-selected", String(!isJoints));
+  $("tabBtnJoints").setAttribute("aria-selected", String(isJoints));
+}
+
+function renderJointControls() {
+  const grid = $("jointControlGrid");
+  if (!grid) return;
+  grid.innerHTML = "";
+  for (const id of ALL_JOINT_IDS) {
+    const s = joints[id];
+    const row = document.createElement("div");
+    row.className = "servo-row";
+    row.dataset.servoRow = String(id);
+    if (!s.installed) {
+      row.classList.add("placeholder");
+      row.innerHTML = `
+        <div class="servo-meta"><span class="servo-status"></span><div><div class="servo-id">#${id}</div><div class="servo-name">未装配</div></div></div>
+        <div class="servo-slider"><input type="range" min="0" max="360" value="0" disabled><div class="servo-tick">ID 空位</div></div>
+        <div class="servo-number"><input type="number" value="" disabled placeholder="--"></div>
+        <div class="servo-actual">未装配</div>
+        <div class="servo-actions"><button class="btn servo-action" disabled>--</button><button class="btn servo-action" disabled>--</button></div>`;
+      grid.appendChild(row);
+      continue;
+    }
+
+    row.innerHTML = `
+      <div class="servo-meta"><span class="servo-status" data-servo-status></span><div><div class="servo-id">#${id}</div><div class="servo-name" title="${JOINT_NAMES[id] || "关节"}">${JOINT_NAMES[id] || "关节"}</div></div></div>
+      <div class="servo-slider">
+        <input type="range" min="0" max="360" step="0.1" data-servo-range>
+        <div class="servo-tick" data-servo-tick></div>
+      </div>
+      <div class="servo-number"><input type="number" min="0" max="360" step="0.1" data-servo-number></div>
+      <div class="servo-actual" data-servo-actual>—</div>
+      <div class="servo-actions">
+        <button class="btn primary servo-action" data-servo-apply>下发</button>
+        <button class="btn servo-action" data-servo-enable>使能</button>
+      </div>`;
+
+    const range = row.querySelector("[data-servo-range]");
+    const number = row.querySelector("[data-servo-number]");
+    const apply = row.querySelector("[data-servo-apply]");
+    const enable = row.querySelector("[data-servo-enable]");
+    range.addEventListener("pointerdown", () => beginJointDrag(id));
+    range.addEventListener("input", () => handleJointDragInput(id, range.value));
+    range.addEventListener("change", () => finishJointDrag(id, range.value));
+    range.addEventListener("pointercancel", () => finishJointDrag(id, range.value));
+    number.addEventListener("input", () => {
+      if (number.value.trim() !== "" && Number.isFinite(Number(number.value))) {
+        setJointTargetLocal(id, number.value, { userEdited: true });
+      }
+    });
+    number.addEventListener("change", () => commitJointTarget(id, number.value));
+    number.addEventListener("keydown", e => { if (e.key === "Enter") number.blur(); });
+    apply.addEventListener("click", () => commitJointTarget(id, joints[id].targetDeg));
+    enable.addEventListener("click", () => setSingleJointEnable(id, !joints[id].enabled));
+    grid.appendChild(row);
+  }
+  updateJointRows();
+}
+
+function renderJointMiniList() {
+  const box = $("jointList");
+  if (!box) return;
+  const touched = SERVO_IDS.some(id => joints[id].online !== null || joints[id].actualDeg !== null);
+  if (!touched) {
+    box.innerHTML = '<div class="hint" style="text-align:center;padding:10px 0">扫描或读取姿态后显示在线摘要</div>';
+    return;
+  }
+  const chips = ALL_JOINT_IDS.map(id => {
+    const s = joints[id];
+    let cls = "joint-mini-chip";
+    let title = "";
+    if (!s.installed) { cls += " empty"; title = "未装配"; }
+    else if (s.online === true && s.errorCode && s.errorCode !== 0) { cls += " warn"; title = errorText(s.errorCode); }
+    else if (s.online === true) { cls += " on"; title = "在线"; }
+    else if (s.online === false) { cls += " off"; title = "离线"; }
+    else { title = "未扫描"; }
+    return `<span class="${cls}" title="#${id} ${title}">${id}</span>`;
+  }).join("");
+  box.innerHTML = `<div class="joint-mini-grid">${chips}</div>`;
+}
+
+function setJointTargetLocal(id, deg, opts = {}) {
+  const s = joints[id];
+  if (!s || !s.installed) return;
+  const n = normaliseAngle(deg);
+  const cmd = commandFromAngle(n);
+  s.targetDeg = n;
+  s.targetTick = cmd.tick;
+  if (opts.userEdited) s.userEdited = true;
+  updateJointRow(id);
+}
+
+function updateJointRows() {
+  for (const id of ALL_JOINT_IDS) updateJointRow(id);
+  renderJointSummary();
+  renderJointMiniList();
+}
+
+function updateJointRow(id) {
+  const row = document.querySelector(`[data-servo-row="${id}"]`);
+  const s = joints[id];
+  if (!row || !s || !s.installed) return;
+  const cmd = commandFromAngle(s.targetDeg);
+  const gap = angleGap(id);
+  const mismatch = gap != null && gap > JOINT_VERIFY_TOLERANCE_DEG;
+  row.classList.toggle("offline", s.online === false);
+  row.classList.toggle("oob", cmd.clamped);
+  row.classList.toggle("mismatch", mismatch);
+  row.classList.toggle("writing", s.writing);
+
+  const status = row.querySelector("[data-servo-status]");
+  status.className = "servo-status";
+  if (s.online === true && s.errorCode && s.errorCode !== 0) status.classList.add("warn");
+  else if (s.online === true) status.classList.add("on");
+  else if (s.online === false) status.classList.add("off");
+  status.title = s.online === true ? (s.errorCode ? errorText(s.errorCode) : "在线") : (s.online === false ? "离线" : "未扫描");
+
+  const range = row.querySelector("[data-servo-range]");
+  const number = row.querySelector("[data-servo-number]");
+  const tick = row.querySelector("[data-servo-tick]");
+  const actual = row.querySelector("[data-servo-actual]");
+  const apply = row.querySelector("[data-servo-apply]");
+  const enable = row.querySelector("[data-servo-enable]");
+  if (document.activeElement !== range) range.value = s.targetDeg.toFixed(1);
+  range.style.setProperty("--fill", `${Math.min(100, Math.max(0, s.targetDeg / 360 * 100))}%`);
+  range.disabled = jointActionBusy;
+  if (document.activeElement !== number) number.value = s.targetDeg.toFixed(1);
+  number.disabled = jointActionBusy;
+  tick.textContent = cmd.clamped
+    ? `限位: ${cmd.tick} tick / ${cmd.angle.toFixed(1)}°`
+    : `目标: ${cmd.tick} tick`;
+  actual.textContent = s.actualDeg == null ? (s.online === false ? "离线" : "—") : formatAngle(s.actualDeg);
+  actual.title = s.actualTick == null ? "" : `raw=${s.actualTick}${gap == null ? "" : `, 偏差=${gap.toFixed(1)}°`}`;
+  actual.classList.toggle("mismatch", mismatch);
+  apply.disabled = jointActionBusy || !jointTakeoverOn || s.online === false;
+  apply.title = jointTakeoverOn ? "只下发这一颗电机的目标角度" : "先开启接管模式";
+  enable.textContent = s.enabled ? "失能" : "使能";
+  enable.classList.toggle("quiet", s.enabled);
+  enable.classList.toggle("danger", !s.enabled && jointTakeoverOn);
+  enable.disabled = jointActionBusy || !jointTakeoverOn || s.online === false;
+  enable.title = jointTakeoverOn ? "只切换这一颗电机的扭矩" : "先开启接管模式";
+}
+
+function renderJointSummary() {
+  const online = SERVO_IDS.filter(id => joints[id].online === true).length;
+  const offline = SERVO_IDS.filter(id => joints[id].online === false).length;
+  const unknown = SERVO_IDS.length - online - offline;
+  const errors = SERVO_IDS.filter(id => joints[id].online === true && joints[id].errorCode && joints[id].errorCode !== 0).length;
+  const enabled = SERVO_IDS.filter(id => joints[id].enabled).length;
+  const mismatches = SERVO_IDS.filter(id => angleGap(id) != null && angleGap(id) > JOINT_VERIFY_TOLERANCE_DEG).length;
+  $("jointOnlineSummary").innerHTML = `<b>在线</b> ${online}/${SERVO_IDS.length} · <b>已使能</b> ${enabled}/${SERVO_IDS.length}${errors ? ` · ${errors} 个报错` : ""}${unknown ? ` · ${unknown} 个未扫描` : ""}`;
+  $("jointMismatchSummary").innerHTML = `<b>偏差</b> ${mismatches ? `${mismatches} 个超过 ${JOINT_VERIFY_TOLERANCE_DEG}°` : "正常或等待读回"}`;
+  $("jointTakeoverBadge").textContent = jointTakeoverOn ? "接管中" : "未接管";
+  $("jointTakeoverBadge").classList.toggle("on", jointTakeoverOn);
+  $("jointTakeoverPanel").classList.toggle("on", jointTakeoverOn);
+  $("jointTakeoverSwitch").checked = jointTakeoverOn;
+  $("jointTakeoverSwitch").disabled = jointActionBusy;
+  $("jointTakeoverState").textContent = jointTakeoverOn
+    ? "接管中：每行「下发」只写入这一颗电机；每行「使能」只打开这一颗电机扭矩。系统每 1 秒自动回读。"
+    : "关闭时只编辑目标值，不写舵机。开启后会关闭自动待机并复位；每个电机需单独使能和下发。";
+  $("jointMiniTitle").textContent = jointTakeoverOn ? "接管中" : "未接管";
+  $("jointMiniSub").textContent = `  在线 ${online}/${SERVO_IDS.length}`;
+  $("jointMiniDot").classList.toggle("on", jointTakeoverOn);
+  $("jointMiniDot").classList.toggle("err", !jointTakeoverOn && offline > 0);
+
+  const busy = jointActionBusy;
+  $("btnJointScan").disabled = busy;
+  $("btnJointScanMain").disabled = busy;
+  $("btnJointReadback").disabled = busy;
+  $("btnJointCenter").disabled = busy;
+  $("btnJointApplyAll").disabled = busy || !jointTakeoverOn;
+  $("btnJointEnableAll").disabled = busy || !jointTakeoverOn;
+  $("btnJointDisable").disabled = busy;
+  $("btnJointDisableAll").disabled = busy;
+  $("btnJointSavePreset").disabled = busy;
+  $("btnJointLoadPreset").disabled = busy;
+  $("btnJointImportPreset").disabled = busy;
+  $("btnJointDeletePreset").disabled = busy;
+}
+
+function setJointBusy(busy) {
+  jointActionBusy = busy;
+  updateJointRows();
+}
+
+function updateJointReadback(poseJoints) {
+  if (!poseJoints) return;
+  jointLastReadAt = new Date();
+  for (const [key, j] of Object.entries(poseJoints)) {
+    const id = Number(key);
+    const s = joints[id];
+    if (!s || !s.installed) continue;
+    s.online = !!j.online;
+    s.actualDeg = j.angle == null ? null : Number(j.angle);
+    s.actualTick = j.raw == null ? null : Number(j.raw);
+    s.errorCode = j.error_code == null ? null : Number(j.error_code);
+    s.errorText = j.error_text || errorText(s.errorCode);
+    if (s.actualDeg != null && !s.userEdited && !s.writing) {
+      s.targetDeg = s.actualDeg;
+      s.targetTick = commandFromAngle(s.actualDeg).tick;
+    }
+  }
+  updateJointRows();
+}
+
+function dragStateFor(id) {
+  if (!jointDragState[id]) {
+    jointDragState[id] = {
+      pendingDeg: joints[id]?.targetDeg ?? tickToAngle(CENTER_TICK),
+      lastSentDeg: null,
+      lastAt: 0,
+      timer: null,
+      inFlight: false,
+      verifyAfterReach: false,
+      disabledWarned: false,
+    };
+  }
+  return jointDragState[id];
+}
+
+function canDragWrite(id, opts = {}) {
+  const s = joints[id];
+  if (!s || !s.installed || !jointTakeoverOn || jointActionBusy || s.online === false) return false;
+  if (!s.enabled) {
+    const st = dragStateFor(id);
+    if (!st.disabledWarned && opts.toast !== false) {
+      st.disabledWarned = true;
+      toast(`#${id} 需先使能`);
+      log(`#${id} 拖动直控未下发：这颗电机尚未使能扭矩`, "warn");
+    }
+    return false;
+  }
+  return true;
+}
+
+function beginJointDrag(id) {
+  const st = dragStateFor(id);
+  st.disabledWarned = false;
+  st.lastSentDeg = joints[id].actualDeg ?? joints[id].targetDeg;
+}
+
+function handleJointDragInput(id, deg) {
+  const cmd = commandFromAngle(deg);
+  setJointTargetLocal(id, cmd.angle, { userEdited: true });
+  if (cmd.clamped) toast("目标已自动限位");
+  if (jointDragDirect) scheduleJointDragWrite(id);
+}
+
+function finishJointDrag(id, deg) {
+  const cmd = commandFromAngle(deg);
+  setJointTargetLocal(id, cmd.angle, { userEdited: true });
+  if (!jointDragDirect) {
+    commitJointTarget(id, cmd.angle);
+    return;
+  }
+  const st = dragStateFor(id);
+  st.verifyAfterReach = true;
+  scheduleJointDragWrite(id);
+}
+
+function scheduleJointDragWrite(id) {
+  const s = joints[id];
+  if (!s || !s.installed) return;
+  const st = dragStateFor(id);
+  st.pendingDeg = commandFromAngle(s.targetDeg).angle;
+  if (!canDragWrite(id)) return;
+  if (st.timer || st.inFlight) return;
+  const minGap = Math.max(30, Math.round(1000 / Math.max(1, jointDragHz)));
+  const wait = Math.max(0, st.lastAt + minGap - performance.now());
+  st.timer = setTimeout(() => runJointDragWrite(id), wait);
+}
+
+async function runJointDragWrite(id) {
+  const st = dragStateFor(id);
+  st.timer = null;
+  if (st.inFlight || !canDragWrite(id, { toast: false })) return;
+  st.inFlight = true;
+  let done = true;
+  try {
+    const targetDeg = commandFromAngle(st.pendingDeg).angle;
+    const baseDeg = Number.isFinite(st.lastSentDeg) ? st.lastSentDeg : (joints[id].actualDeg ?? targetDeg);
+    const nextDeg = moveToward(baseDeg, targetDeg, jointDragMaxStepDeg);
+    const cmd = commandFromAngle(nextDeg);
+    const ok = await writeJointPosition(id, cmd.tick, { silent: true, drag: true });
+    if (ok) {
+      st.lastSentDeg = cmd.angle;
+      st.lastAt = performance.now();
+    }
+    done = Math.abs(targetDeg - cmd.angle) < 0.05;
+    if (done && st.verifyAfterReach) {
+      st.verifyAfterReach = false;
+      setTimeout(() => verifyJointTargets([id]), 180);
+    }
+  } finally {
+    st.inFlight = false;
+    if (!done || Math.abs(commandFromAngle(st.pendingDeg).angle - (st.lastSentDeg ?? st.pendingDeg)) >= 0.05) {
+      scheduleJointDragWrite(id);
+    }
+  }
+}
+
+function updateDragSettings() {
+  jointDragDirect = $("jointDragDirect").checked;
+  jointDragHz = Number($("jointDragRate").value) || 8;
+  jointDragMaxStepDeg = Number($("jointDragStep").value) || 6;
+  renderDragLimitHint();
+  log(`拖动直控参数：${jointDragDirect ? "开启" : "关闭"} · ${jointDragHz} Hz · 单步 ${jointDragMaxStepDeg}°`, "sys");
+}
+
 async function scanJoints() {
-  const box = $("jointList"); box.innerHTML = '<div class="hint">扫描中…</div>';
+  const box = $("jointList");
+  box.innerHTML = '<div class="hint">扫描中…</div>';
+  setJointBusy(true);
   try {
     log("发送指令: PING 帧 ×32（ID=1..32，逐个探测在线关节）", "sys");
     const d = await api("/api/joint/scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ start: 1, end: 32 }) });
+    if (d.ok === false || d.error) throw new Error(d.error || "扫描失败");
     if (d.sent_frames && d.sent_frames.length) {
       log(`  → PING 帧示例: ${d.sent_frames[0]}`, "sys");
       log(`  → 共发送 ${d.sent_frames.length} 帧`, "sys");
@@ -600,7 +1209,6 @@ async function scanJoints() {
     const raw = d.raw || "";
     log(`机器反馈: ${raw ? raw.length / 2 + " 字节" : "(无响应)"}`, "sys");
     if (raw) log(`  ← 原始响应: ${raw}`, "sys");
-    // 解析 PING 响应帧：ff00fd00 ID LenLen 55 ERR CRCCRC（每帧 11 字节 = 22 hex）
     const results = [];
     for (let i = 0; i + 22 <= raw.length; i += 22) {
       const seg = raw.substr(i, 22);
@@ -609,15 +1217,443 @@ async function scanJoints() {
       const err = parseInt(seg.substr(16, 2), 16);
       results.push({ id, err });
     }
+    const byId = new Map(results.map(r => [r.id, r]));
+    for (const id of SERVO_IDS) {
+      const r = byId.get(id);
+      joints[id].online = !!r;
+      joints[id].errorCode = r ? r.err : null;
+      joints[id].errorText = r ? errorText(r.err) : "无响应";
+    }
     const errList = results.filter(r => r.err !== 0);
     log(`  在线 ${results.length} 个关节，报错误码 ${errList.length} 个`, "sys");
     for (const r of results) {
       const name = r.err === 0 ? "OK" : `0x${r.err.toString(16).padStart(2, "0")}`;
       log(`    #${r.id}: ${name}`, r.err === 0 ? "ok" : "warn");
     }
-    box.innerHTML = `<div class="hint">在线 ${results.length} 个关节，报错误码 ${errList.length} 个。详见日志。</div>`;
+    updateJointRows();
     toast("扫描完成");
-  } catch (e) { log("扫描失败: " + e.message, "err"); }
+  } catch (e) {
+    log("扫描失败: " + e.message, "err");
+    toast("扫描失败");
+  } finally {
+    setJointBusy(false);
+  }
+}
+
+async function setStandbyQuiet(quiet) {
+  const d = await api("/api/standby", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quiet }) });
+  if (d.ok === false || d.error) throw new Error(d.error || d.output || "待机切换失败");
+  standbyQuiet = !!d.quiet;
+  renderStandby();
+  log(quiet ? "接管准备：自动待机动作已关闭" : "退出接管：自动待机动作已恢复", "ok");
+  log(`  发送指令: ${d.command || "(未知)"}`, "sys");
+  log(`  执行结果: ${d.output || "(无)"}`, "sys");
+}
+
+async function setSingleJointEnable(id, enable, opts = {}) {
+  const s = joints[id];
+  if (!s || !s.installed) return false;
+  if (!jointTakeoverOn && enable) {
+    toast("请先开启接管模式");
+    log(`#${id} 使能被拦截：未开启接管模式`, "warn");
+    return false;
+  }
+  s.writing = true;
+  updateJointRow(id);
+  try {
+    const d = await api("/api/joint/enable", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, enable }) });
+    if (d.ok === false || d.error) throw new Error(d.error || "扭矩指令失败");
+    s.enabled = !!enable;
+    if (!opts.silent) log(`#${id} 扭矩${enable ? "使能" : "失能"}完成`, enable ? "ok" : "warn");
+    if (!opts.silent && d.raw) log(`  机器反馈 #${id}: ${d.raw}`, "sys");
+    return true;
+  } catch (e) {
+    log(`#${id} 扭矩${enable ? "使能" : "失能"}失败: ${e.message}`, "err");
+    return false;
+  } finally {
+    s.writing = false;
+    updateJointRow(id);
+  }
+}
+
+async function setAllJointEnable(enable, opts = {}) {
+  if (enable && !jointTakeoverOn) {
+    toast("请先开启接管模式");
+    log("全使能被拦截：未开启接管模式", "warn");
+    return false;
+  }
+  if (opts.confirm !== false) {
+    const msg = enable ? "确认使能全部 27 个关节扭矩？" : "确认失能全部 27 个关节扭矩？机器人可能会失去保持力。";
+    if (!confirm(msg)) return false;
+  }
+  if (!opts.keepBusy) setJointBusy(true);
+  let ok = 0;
+  try {
+    log(`批量${enable ? "使能" : "失能"}开始：${SERVO_IDS.length} 个关节串行发送`, "warn");
+    for (const id of installedIds()) {
+      if (await setSingleJointEnable(id, enable, { silent: true })) ok++;
+      await delay(JOINT_WRITE_GAP_MS);
+    }
+    log(`批量${enable ? "使能" : "失能"}完成：${ok}/${SERVO_IDS.length}`, ok === SERVO_IDS.length ? "ok" : "warn");
+    toast(`${enable ? "使能" : "失能"}完成 ${ok}/${SERVO_IDS.length}`);
+    return ok === SERVO_IDS.length;
+  } finally {
+    if (!opts.keepBusy) setJointBusy(false);
+  }
+}
+
+async function writeJointPosition(id, tick, opts = {}) {
+  const s = joints[id];
+  if (!s || !s.installed) return false;
+  s.writing = true;
+  updateJointRow(id);
+  try {
+    const d = await api("/api/joint/write", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, position: tick }) });
+    if (d.ok === false || d.error) throw new Error(d.error || "写入失败");
+    if (!opts.silent) {
+      log(`#${id} 目标已下发: ${formatAngle(s.targetDeg)} / ${tick} tick`, "act");
+      if (d.raw) log(`  机器反馈 #${id}: ${d.raw}`, "sys");
+    }
+    return true;
+  } catch (e) {
+    log(`#${id} 写入失败: ${e.message}`, "err");
+    toast(`#${id} 写入失败`);
+    return false;
+  } finally {
+    s.writing = false;
+    updateJointRow(id);
+  }
+}
+
+async function verifyJointTargets(ids) {
+  await delay(160);
+  const res = await readPose({ fast: true, silent: true });
+  if (!res.ok) {
+    log("回读校验失败: " + (res.error || "无法读取姿态"), "warn");
+    toast("回读校验失败");
+    return false;
+  }
+  const bad = installedIds(ids).filter(id => {
+    const gap = angleGap(id);
+    return gap != null && gap > JOINT_VERIFY_TOLERANCE_DEG;
+  });
+  if (bad.length) {
+    const sample = bad.slice(0, 6).map(id => `#${id}(${angleGap(id).toFixed(1)}°)`).join(" ");
+    log(`回读偏差警告：${bad.length} 个关节未到位 ${sample}`, "warn");
+    toast(`${bad.length} 个关节回读偏差`);
+    return false;
+  }
+  log(ids.length > 1 ? `批量回读校验通过：${ids.length} 个关节` : `#${ids[0]} 回读校验通过`, "ok");
+  return true;
+}
+
+async function commitJointTarget(id, requestedDeg) {
+  const s = joints[id];
+  if (!s || !s.installed) return;
+  const cmd = commandFromAngle(requestedDeg);
+  setJointTargetLocal(id, cmd.angle, { userEdited: true });
+  if (cmd.clamped) {
+    log(`#${id} 目标超出软件限位，已夹到 ${cmd.tick} tick / ${cmd.angle.toFixed(1)}°`, "warn");
+    toast("目标已自动限位");
+  }
+  if (!jointTakeoverOn) {
+    toast("目标已暂存；开启接管后再下发");
+    return;
+  }
+  if (jointDragDirect) {
+    const st = dragStateFor(id);
+    st.verifyAfterReach = true;
+    st.lastSentDeg = st.lastSentDeg ?? s.actualDeg ?? s.targetDeg;
+    scheduleJointDragWrite(id);
+    return;
+  }
+  if (!s.enabled) {
+    log(`#${id} 尚未使能扭矩：目标会写入这一颗电机，但可能不会立刻转动`, "warn");
+  }
+  setJointBusy(true);
+  try {
+    await writeJointPosition(id, cmd.tick);
+    await verifyJointTargets([id]);
+  } finally {
+    setJointBusy(false);
+  }
+}
+
+async function writeJointBatch(ids, label = "批量写入") {
+  const targetIds = installedIds(ids);
+  if (!jointTakeoverOn) {
+    toast("请先开启接管模式");
+    log(`${label} 被拦截：未开启接管模式`, "warn");
+    return false;
+  }
+  setJointBusy(true);
+  let ok = 0;
+  try {
+    log(`${label}开始：${targetIds.length} 个关节串行下发`, "warn");
+    for (const id of targetIds) {
+      const cmd = commandFromAngle(joints[id].targetDeg);
+      if (cmd.clamped) setJointTargetLocal(id, cmd.angle, { userEdited: true });
+      if (await writeJointPosition(id, cmd.tick, { silent: true })) ok++;
+      await delay(JOINT_WRITE_GAP_MS);
+    }
+    log(`${label}完成：${ok}/${targetIds.length}`, ok === targetIds.length ? "ok" : "warn");
+    await verifyJointTargets(targetIds);
+    toast(`${label}完成 ${ok}/${targetIds.length}`);
+    return ok === targetIds.length;
+  } finally {
+    setJointBusy(false);
+  }
+}
+
+async function centerAllJoints() {
+  if (!confirm("确认将 27 个关节目标设为中位 2048 tick？接管中会立即批量下发。")) return;
+  for (const id of SERVO_IDS) setJointTargetLocal(id, tickToAngle(CENTER_TICK), { userEdited: true });
+  if (!jointTakeoverOn) {
+    toast("已暂存全居中目标");
+    log("全居中目标已暂存；开启接管后可下发", "sys");
+    return;
+  }
+  await writeJointBatch(SERVO_IDS, "全居中");
+}
+
+async function applyAllJointTargets() {
+  if (!jointTakeoverOn) {
+    toast("请先开启接管模式");
+    log("下发目标被拦截：未开启接管模式", "warn");
+    return;
+  }
+  if (!confirm("确认将当前 27 个目标角度批量下发到机器人？")) return;
+  await writeJointBatch(SERVO_IDS, "下发当前目标");
+}
+
+function startJointLiveRead() {
+  stopJointLiveRead();
+  const loop = async () => {
+    if (!jointTakeoverOn) return;
+    if (!jointActionBusy && !anyJointWriting()) await readPose({ fast: true, silent: true });
+    jointLiveTimer = setTimeout(loop, 1000);
+  };
+  loop();
+}
+function stopJointLiveRead() {
+  if (jointLiveTimer) clearTimeout(jointLiveTimer);
+  jointLiveTimer = null;
+}
+
+async function enterJointTakeover() {
+  if (jointTakeoverOn) return true;
+  if (!confirm("确认进入接管模式？将关闭自动待机并执行姿态复位；不会自动使能全部关节，后续可逐个电机独立使能和下发。")) {
+    renderJointSummary();
+    return false;
+  }
+  setJointBusy(true);
+  try {
+    if (livePoseOn) toggleLivePose();
+    log("进入接管模式：关闭自动待机 → 姿态复位 → 单电机独立控制", "warn");
+    await setStandbyQuiet(true);
+    const d = await api("/api/reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    if (d.ok === false || d.error) throw new Error(d.error || "复位失败");
+    playingAction = null; $("lblPlay").textContent = "已复位"; setLed("ledPlay", false); renderMotions();
+    log("接管准备：姿态复位已触发 (Motion_Reset)", "ok");
+    log(`  机器反馈: ${d.response || "(无响应)"}`, d.response && d.response.includes("error") ? "err" : "sys");
+    jointTakeoverOn = true;
+    await readPose({ fast: false, silent: true });
+    startJointLiveRead();
+    toast("已进入接管模式");
+    log("关节接管已开启：每个电机可单独使能、单独下发", "ok");
+    return true;
+  } catch (e) {
+    jointTakeoverOn = false;
+    stopJointLiveRead();
+    log("进入接管失败: " + e.message, "err");
+    toast("接管失败");
+    return false;
+  } finally {
+    setJointBusy(false);
+  }
+}
+
+async function exitJointTakeover() {
+  if (!jointTakeoverOn) return true;
+  if (!confirm("确认退出接管模式？将失能全部关节扭矩，并恢复自动待机动作。")) {
+    renderJointSummary();
+    return false;
+  }
+  setJointBusy(true);
+  stopJointLiveRead();
+  try {
+    log("退出接管模式：全关节失能 → 恢复自动待机", "warn");
+    await setAllJointEnable(false, { confirm: false, keepBusy: true });
+    await setStandbyQuiet(false);
+    jointTakeoverOn = false;
+    toast("已退出接管模式");
+    log("关节接管已关闭", "ok");
+    return true;
+  } catch (e) {
+    log("退出接管失败: " + e.message, "err");
+    toast("退出接管失败");
+    return false;
+  } finally {
+    setJointBusy(false);
+  }
+}
+
+async function onJointTakeoverSwitch() {
+  const want = $("jointTakeoverSwitch").checked;
+  $("jointTakeoverSwitch").checked = jointTakeoverOn;
+  if (want) await enterJointTakeover();
+  else await exitJointTakeover();
+  renderJointSummary();
+}
+
+async function readJointPanelPose() {
+  setJointBusy(true);
+  try {
+    const res = await readPose({ fast: false, silent: false });
+    if (res.ok) toast("关节回显已更新");
+  } finally {
+    setJointBusy(false);
+  }
+}
+
+function loadJointPresets() {
+  try { return JSON.parse(localStorage.getItem(JOINT_PRESET_KEY) || "{}"); }
+  catch { return {}; }
+}
+function saveJointPresets(presets) {
+  localStorage.setItem(JOINT_PRESET_KEY, JSON.stringify(presets));
+}
+function renderPresetSelect() {
+  const sel = $("jointPresetSelect");
+  if (!sel) return;
+  const presets = loadJointPresets();
+  const names = Object.keys(presets).sort();
+  sel.innerHTML = "";
+  const empty = document.createElement("option");
+  empty.value = "";
+  empty.textContent = names.length ? "选择本机预设" : "暂无本机预设";
+  sel.appendChild(empty);
+  for (const name of names) {
+    const opt = document.createElement("option");
+    opt.value = name;
+    opt.textContent = name;
+    sel.appendChild(opt);
+  }
+}
+function safeFileName(name) {
+  return String(name || "joint-preset").replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, "-").slice(0, 80);
+}
+function buildCurrentPreset(name) {
+  const data = {};
+  for (const id of SERVO_IDS) {
+    const cmd = commandFromAngle(joints[id].targetDeg);
+    data[id] = { angle: Number(cmd.angle.toFixed(2)), tick: cmd.tick };
+  }
+  return {
+    name,
+    createdAt: new Date().toISOString(),
+    format: "figurobot-joint-preset-v1",
+    limits: { minTick: MIN_GOAL_TICK, maxTick: MAX_GOAL_TICK },
+    servoIds: SERVO_IDS,
+    joints: data,
+  };
+}
+function downloadPreset(preset) {
+  const blob = new Blob([JSON.stringify(preset, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${safeFileName(preset.name)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  URL.revokeObjectURL(a.href);
+  a.remove();
+}
+function saveCurrentJointPreset() {
+  const fallback = `姿态-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}`;
+  const name = $("jointPresetName").value.trim() || fallback;
+  const preset = buildCurrentPreset(name);
+  const presets = loadJointPresets();
+  presets[name] = preset;
+  saveJointPresets(presets);
+  renderPresetSelect();
+  $("jointPresetSelect").value = name;
+  downloadPreset(preset);
+  log(`关节预设已保存并导出：${name}`, "ok");
+  toast("预设已保存");
+}
+function extractPresetEntries(preset) {
+  const source = preset && (preset.joints || preset.angles || preset);
+  if (!source || typeof source !== "object") return [];
+  const entries = [];
+  for (const id of SERVO_IDS) {
+    const item = source[id] ?? source[String(id)];
+    if (item == null) continue;
+    let deg = null;
+    if (typeof item === "number") deg = item;
+    else if (item.angle != null) deg = item.angle;
+    else if (item.deg != null) deg = item.deg;
+    else if (item.tick != null) deg = tickToAngle(item.tick);
+    else if (item.position != null) deg = tickToAngle(item.position);
+    if (deg != null && Number.isFinite(Number(deg))) entries.push({ id, deg: normaliseAngle(deg) });
+  }
+  return entries;
+}
+async function applyJointPreset(preset, sourceName = "预设") {
+  const entries = extractPresetEntries(preset);
+  if (!entries.length) {
+    toast("预设无有效关节数据");
+    log(`${sourceName} 无有效关节数据`, "err");
+    return;
+  }
+  const msg = jointTakeoverOn
+    ? `确认加载并下发「${sourceName}」？将批量写入 ${entries.length} 个关节。`
+    : `确认加载「${sourceName}」？当前未接管，只会填入目标值，不驱动机器人。`;
+  if (!confirm(msg)) return;
+  for (const { id, deg } of entries) setJointTargetLocal(id, commandFromAngle(deg).angle, { userEdited: true });
+  log(`关节预设已加载到目标值：${sourceName} (${entries.length} 个)`, "ok");
+  if (jointTakeoverOn) await writeJointBatch(entries.map(x => x.id), `加载预设「${sourceName}」`);
+  else toast("预设已加载到目标值");
+}
+async function loadSelectedJointPreset() {
+  const name = $("jointPresetSelect").value;
+  if (!name) { toast("请选择预设"); return; }
+  const preset = loadJointPresets()[name];
+  if (!preset) { toast("预设不存在"); renderPresetSelect(); return; }
+  await applyJointPreset(preset, name);
+}
+function deleteSelectedJointPreset() {
+  const name = $("jointPresetSelect").value;
+  if (!name) { toast("请选择预设"); return; }
+  if (!confirm(`确认删除本机预设「${name}」？`)) return;
+  const presets = loadJointPresets();
+  delete presets[name];
+  saveJointPresets(presets);
+  renderPresetSelect();
+  log(`已删除本机关节预设：${name}`, "warn");
+  toast("预设已删除");
+}
+function importJointPresetFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async () => {
+    try {
+      const preset = JSON.parse(String(reader.result || ""));
+      const name = preset.name || file.name.replace(/\.json$/i, "");
+      const presets = loadJointPresets();
+      presets[name] = { ...preset, name };
+      saveJointPresets(presets);
+      renderPresetSelect();
+      $("jointPresetSelect").value = name;
+      log(`已导入关节预设：${name}`, "ok");
+      toast("预设已导入");
+    } catch (e) {
+      log("导入预设失败: " + e.message, "err");
+      toast("导入失败");
+    } finally {
+      $("jointPresetFile").value = "";
+    }
+  };
+  reader.readAsText(file, "utf-8");
 }
 
 // ---------- 姿态读取与安全判断 ----------
@@ -689,6 +1725,7 @@ async function readPose(opts = {}) {
     }
     const safety = d.safety || {};
     renderPoseList(d.joints, safety);
+    updateJointReadback(d.joints);
     if (window.Pose3D) window.Pose3D.update(d.joints, d.zero_values);
     const lv = safety.level;
     if (!silent) {
@@ -705,7 +1742,7 @@ async function readPose(opts = {}) {
         setPoseBanner("warn", safety.level_text || "未知", "");
       }
     }
-    return { ok: true, safety };
+    return { ok: true, safety, joints: d.joints, limits: d.limits };
   } catch (e) {
     if (!silent) {
       setPoseBanner("danger", "读取失败", e.message);
@@ -875,8 +1912,26 @@ function toggleMic() {
 $("btnConnectBridge").addEventListener("click", connectBridge);
 $("btnRefresh").addEventListener("click", () => { connectBridge(); });
 $("btnReset").addEventListener("click", resetRobot);
+$("tabBtnMotion").addEventListener("click", () => switchConsoleTab("motion"));
+$("tabBtnJoints").addEventListener("click", () => switchConsoleTab("joints"));
+$("btnOpenJointTab").addEventListener("click", () => switchConsoleTab("joints"));
 $("btnJointScan").addEventListener("click", scanJoints);
-$("btnJointDisable").addEventListener("click", () => toast("断电功能需串口空闲"));
+$("btnJointScanMain").addEventListener("click", scanJoints);
+$("btnJointDisable").addEventListener("click", () => setAllJointEnable(false));
+$("btnJointDisableAll").addEventListener("click", () => setAllJointEnable(false));
+$("btnJointEnableAll").addEventListener("click", () => setAllJointEnable(true));
+$("btnJointCenter").addEventListener("click", centerAllJoints);
+$("btnJointApplyAll").addEventListener("click", applyAllJointTargets);
+$("btnJointReadback").addEventListener("click", readJointPanelPose);
+$("jointTakeoverSwitch").addEventListener("change", onJointTakeoverSwitch);
+$("jointDragDirect").addEventListener("change", updateDragSettings);
+$("jointDragRate").addEventListener("change", updateDragSettings);
+$("jointDragStep").addEventListener("change", updateDragSettings);
+$("btnJointSavePreset").addEventListener("click", saveCurrentJointPreset);
+$("btnJointLoadPreset").addEventListener("click", loadSelectedJointPreset);
+$("btnJointDeletePreset").addEventListener("click", deleteSelectedJointPreset);
+$("btnJointImportPreset").addEventListener("click", () => $("jointPresetFile").click());
+$("jointPresetFile").addEventListener("change", e => importJointPresetFile(e.target.files[0]));
 $("btnReadPose").addEventListener("click", () => readPose({ fast: false, silent: false }));
 $("btnLivePose").addEventListener("click", toggleLivePose);
 $("btnPoseReset").addEventListener("click", poseReset);
@@ -889,6 +1944,11 @@ $("chatInput").addEventListener("keydown", e => { if (e.key === "Enter") sendCha
 $("btnMic").addEventListener("click", toggleMic);
 
 function setLed(id, on, err = false) { const d = $(id); d.classList.toggle("on", on && !err); d.classList.toggle("err", err); }
+
+renderJointControls();
+renderPresetSelect();
+renderJointSummary();
+renderDragLimitHint();
 
 log("FiguRobot 控制台已就绪。请先运行 robot_bridge.py，然后点击「连接桥接」。", "sys");
 log("控制链路：网页 → 桥接服务(adb) → 控制盒 motion_main → 串口 → 32 关节电机", "sys");
