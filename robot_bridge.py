@@ -81,9 +81,9 @@ DXL_ERROR_NAMES = {
 }
 # 注意：0x10 官方未定义（实测 27 舵机会集体报，但能正常驱动，含义待官方确认），
 # 不要臆断为「电压错误」。未收录的错误码统一显示「未定义(0xXX)」。
-# 全部关节 ID（缺 18，来自 motor.json id_action_list）
-SERVO_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
-             19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
+# 实际装配的关节 ID（27 个，缺 5/10/18/31/32，与 motion_main config.json servo_ids 一致）
+SERVO_IDS = [1, 2, 3, 4, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17,
+             19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
 
 
 def crc16(data):
@@ -366,23 +366,38 @@ class Robot:
             capture_output=True, text=True, encoding="utf-8", errors="replace")
         self._serial_exec_uploaded = True
 
-    def _serial_exec(self, hex_frames, read_timeout=0.4):
+    def _serial_exec(self, hex_frames, read_timeout=0.4, one_by_one=False):
         """在设备上跑串口执行脚本，传 frames（hex 列表）+ read_timeout。
 
+        one_by_one=True 时逐个发送逐个读取（半双工标准），
+        避免 motion_main 独占串口时批量发送丢响应。
         用 base64 编码 + stdin pipe 传 Python 代码，绕开 shell 单引号转义问题。
         """
         self._ensure_serial_exec_uploaded()
         env_json = json.dumps(list(hex_frames))
+        # 缓存串口路径：首次调用 find_port 探测并记录，后续直接复用（跳过探测，大幅提速）
+        port_env = ""
+        if getattr(self, "_serial_port", None):
+            port_env = f"os.environ['SERIAL_PORT']={self._serial_port!r};"
         py = (
             "import os;"
+            + port_env +
             f"os.environ['SERIAL_HEX_FRAMES']={env_json!r};"
             f"os.environ['SERIAL_READ_TIMEOUT']={str(read_timeout)!r};"
+            f"os.environ['SERIAL_ONE_BY_ONE']={('1' if one_by_one else '0')!r};"
             f"exec(open('{self._SERIAL_EXEC_REMOTE}').read())"
         )
         b64 = base64.b64encode(py.encode("utf-8")).decode("ascii")
         cmd = f"echo {b64} | base64 -d | python3"
         r = self.shell(cmd, timeout=20)
-        return r.stdout or ""
+        out = r.stdout or ""
+        # 记录串口路径（PORT: 行），供后续调用直接复用
+        if not getattr(self, "_serial_port", None):
+            for line in out.splitlines():
+                if line.startswith("PORT:"):
+                    self._serial_port = line[5:].strip()
+                    break
+        return out
 
     def joint_write(self, dev_id, position):
         frame = build_write(dev_id, ADDR["goal_position"], u32(position))
@@ -469,24 +484,30 @@ class Robot:
         # 第一步（完整模式）：逐个 PING 拿在线状态和错误码
         online_ids = list(SERVO_IDS)
         if not fast:
-            ping_frames = [bytes(build_frame(i, CMD["PING"], [])).hex() for i in SERVO_IDS]
-            ping_count = len(ping_frames)
-            ping_sample = ping_frames[0] if ping_frames else ""
-            out = self._serial_exec(ping_frames, read_timeout=0.4)
-            hexstr = self._parse_hex(out)
-            if isinstance(hexstr, dict):
-                return {"error": hexstr.get("error", "serial error"), "joints": {},
-                        "_debug": {"ping_count": ping_count, "ping_sample": ping_sample,
-                                   "ping_response_hex": "", "read_count": 0,
-                                   "read_sample": "", "read_addr": "0x84 (Present Position, 4 bytes)",
-                                   "read_response_hex": ""}}
-            ping_response_hex = hexstr if isinstance(hexstr, str) else ""
-            ping_frames_parsed = self._parse_frames(hexstr)
-            online_ids = []
-            for did, err, _ in ping_frames_parsed:
-                online_ids.append(did)
-                err_by_id[did] = err
-            self._cache_errs(err_by_id)
+            # 自动重试：舵机刚启动未就绪 / 串口竞争时，第一次可能读到 0 个在线，等待后重试一次
+            for attempt in range(2):
+                ping_frames = [bytes(build_frame(i, CMD["PING"], [])).hex() for i in SERVO_IDS]
+                ping_count = len(ping_frames)
+                ping_sample = ping_frames[0] if ping_frames else ""
+                # one_by_one=True：逐个 PING（半双工标准），motion_main 独占串口时批量发送会丢响应
+                out = self._serial_exec(ping_frames, read_timeout=0.4, one_by_one=True)
+                hexstr = self._parse_hex(out)
+                if isinstance(hexstr, dict):
+                    return {"error": hexstr.get("error", "serial error"), "joints": {},
+                            "_debug": {"ping_count": ping_count, "ping_sample": ping_sample,
+                                       "ping_response_hex": "", "read_count": 0,
+                                       "read_sample": "", "read_addr": "0x84 (Present Position, 4 bytes)",
+                                       "read_response_hex": ""}}
+                ping_response_hex = hexstr if isinstance(hexstr, str) else ""
+                ping_frames_parsed = self._parse_frames(hexstr)
+                online_ids = []
+                for did, err, _ in ping_frames_parsed:
+                    online_ids.append(did)
+                    err_by_id[did] = err
+                self._cache_errs(err_by_id)
+                if online_ids or attempt == 1:
+                    break
+                time.sleep(1)  # 0 个在线，等待后重试
         else:
             # fast 模式：复用缓存，在线集合 = 上次 PING 在线的 ID
             err_by_id = dict(self._err_cache)

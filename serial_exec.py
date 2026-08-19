@@ -34,7 +34,7 @@ def openp(port):
     a[1] = 0
     a[3] = 0
     a[6][termios.VMIN] = 0
-    a[6][termios.VTIME] = 5
+    a[6][termios.VTIME] = 1
     a[4] = termios.B1000000
     a[5] = termios.B1000000
     termios.tcsetattr(fd, termios.TCSANOW, a)
@@ -80,24 +80,37 @@ def find_port():
 def main():
     read_timeout = float(os.environ.get('SERIAL_READ_TIMEOUT', '0.4'))
     frames_hex = os.environ.get('SERIAL_HEX_FRAMES', '[]')
+    one_by_one = os.environ.get('SERIAL_ONE_BY_ONE', '0') == '1'
     try:
         frames = json.loads(frames_hex)
     except Exception as e:
         print('SERIAL_ERROR:bad_frames_json:{}'.format(e))
         return
-    target = find_port()
+    target = os.environ.get('SERIAL_PORT') or find_port()
     if target is None:
         print('SERIAL_ERROR:no_motor_serial')
         return
     try:
         fd = openp(target)
-        for f in frames:
-            os.write(fd, bytes.fromhex(f))
-            time.sleep(0.04)
-        time.sleep(read_timeout)
-        out = drain(fd, max_iters=80)
-        print('PORT:' + target)
-        print('HEX:' + out.hex())
+        if one_by_one:
+            # 逐个模式：发一帧、等一帧、读一帧（半双工标准）。
+            # 批量发送时 motion_main 独占串口会抢走响应，逐个模式窗口短、更可靠。
+            collected = b''
+            for f in frames:
+                os.write(fd, bytes.fromhex(f))
+                time.sleep(0.06)
+                out = drain(fd, max_iters=10)
+                collected += out
+            print('PORT:' + target)
+            print('HEX:' + collected.hex())
+        else:
+            for f in frames:
+                os.write(fd, bytes.fromhex(f))
+                time.sleep(0.04)
+            time.sleep(read_timeout)
+            out = drain(fd, max_iters=80)
+            print('PORT:' + target)
+            print('HEX:' + out.hex())
         os.close(fd)
     except Exception as e:
         print('SERIAL_ERROR:' + str(e))
