@@ -187,6 +187,20 @@
   .log .ok { color: var(--green); } .log .err { color: var(--red); } .log .sys { color: var(--text-faint); }
   .log .act { color: var(--cyan); } .log .warn { color: var(--amber); }
 
+  /* AI 对话 */
+  .chat-box {
+    height: 220px; overflow-y: auto; padding: 10px; border-radius: 12px;
+    border: 1px solid var(--stroke); background: rgba(0,0,0,0.28); display: flex; flex-direction: column; gap: 8px;
+  }
+  .chat-msg { max-width: 82%; padding: 8px 12px; border-radius: 12px; font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+  .chat-msg.user { align-self: flex-end; background: rgba(56,138,221,0.2); border: 1px solid rgba(56,138,221,0.4); border-bottom-right-radius: 4px; }
+  .chat-msg.bot { align-self: flex-start; background: rgba(255,255,255,0.06); border: 1px solid var(--stroke); border-bottom-left-radius: 4px; }
+  .chat-msg .tool { display: block; margin-top: 6px; font-size: 11px; color: var(--cyan); }
+  .chat-input-row { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+  .chat-input-row input { flex: 1; }
+  .chat-input-row .btn { padding: 0 12px; height: 40px; }
+  #btnMic.recording { background: rgba(251,113,133,0.2); border-color: var(--red); color: #ffb3c0; animation: pulse 1.2s infinite; }
+
   .hint { font-size: 11.5px; color: var(--text-faint); line-height: 1.6; margin-top: 8px; }
 
   /* 姿态与安全 */
@@ -199,6 +213,10 @@
   .pose-dot.warn { background: var(--amber); box-shadow: 0 0 10px var(--amber); }
   .pose-dot.danger { background: var(--red); box-shadow: 0 0 10px var(--red); animation: pulse 1.4s infinite; }
   .pose-dot.power { background: #f97316; box-shadow: 0 0 12px #f97316; animation: pulse 1.2s infinite; }
+  .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); display: inline-block; margin-right: 5px; vertical-align: middle; }
+  .live-dot.on { background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 1.1s infinite; }
+  #btnLivePose.active { border-color: rgba(52,211,153,0.6); color: var(--green); }
+  #btnLivePose.slow .live-dot { background: var(--amber); box-shadow: 0 0 8px var(--amber); animation: pulse 2.5s infinite; }
   .pose-title { font-size: 13px; font-weight: 600; }
   .pose-sub { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
   .pose-banner.safe { border-color: rgba(52,211,153,0.42); }
@@ -305,6 +323,9 @@
         <button class="btn" id="btnPose3D" title="3D 关节点展示">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 16-8 3-8-3V8l8-3 8 3v8z"/><path d="m3 8 8 3 8-3"/><path d="m13 11v8"/></svg>3D
         </button>
+        <button class="btn" id="btnLivePose" title="实时轮询姿态：开启后 1 秒一次，动作播放时自动降到 2.5 秒">
+          <span class="live-dot" id="livePoseDot"></span><span id="livePoseText">实时</span>
+        </button>
       </div>
       <div class="joint-list" id="poseList" style="max-height:210px">
         <div class="hint" style="text-align:center;padding:10px 0">读取后显示所有关节角度</div>
@@ -338,6 +359,25 @@
       </div>
       <div class="chips" id="chips"></div>
       <div class="motion-grid" id="motionGrid"><div class="hint" style="grid-column:1/-1;text-align:center;padding:30px 0">连接桥接服务后自动加载动作</div></div>
+    </div>
+
+    <div class="glass card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <h2 style="margin:0;flex:1"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>AI 对话 <span style="color:var(--text-faint);text-transform:none;letter-spacing:0;margin-left:2px;font-size:11px">DeepSeek 驱动</span></h2>
+        <span class="hint" style="margin:0">唤醒词：你好小图</span>
+      </div>
+      <div class="chat-box" id="chatBox">
+        <div class="chat-msg bot">你好，我是 Figurobot！可以和我聊天，或让我「跳个舞」「挥挥手」。</div>
+      </div>
+      <div class="chat-input-row">
+        <input type="text" id="chatInput" placeholder="输入指令，如「跳个科目三」…" autocomplete="off">
+        <button class="btn" id="btnMic" title="语音输入（浏览器麦克风，识别成文字后发送）">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+        </button>
+        <button class="btn primary" id="btnSendChat" style="padding:0 16px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
     </div>
 
     <div class="glass card">
@@ -621,50 +661,97 @@ function renderPoseList(joints, safety) {
   }
 }
 
-async function readPose() {
+async function readPose(opts = {}) {
+  const { fast = false, silent = false } = opts;
   const btn = $("btnReadPose");
-  btn.disabled = true;
-  setPoseBanner("", "读取中…", "正在通过串口读取所有关节");
-  log("发送指令: PING 全关节 ID=" + "1..32" + "（探测在线状态）", "sys");
+  if (!silent) {
+    btn.disabled = true;
+    setPoseBanner("", "读取中…", "正在通过串口读取所有关节");
+    log(fast ? "发送指令: SYNC_READ 全关节（实时快读，跳过 PING）"
+            : "发送指令: PING 全关节 ID=1..32（探测在线状态）", "sys");
+  }
   try {
-    const d = await api("/api/pose", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    const body = fast ? JSON.stringify({ fast: true }) : "{}";
+    const d = await api("/api/pose", { method: "POST", headers: { "Content-Type": "application/json" }, body });
     const dbg = d.debug || {};
-    // 打印具体发出的指令和机器反馈
-    if (dbg.ping_sample) {
+    // 打印具体发出的指令和机器反馈（仅非静默）
+    if (!silent && dbg.ping_sample) {
       log(`  → PING 帧 ×${dbg.ping_count} 示例: ${dbg.ping_sample}`, "sys");
       log(`  ← PING 响应 ${dbg.ping_response_hex ? dbg.ping_response_hex.length / 2 + " 字节" : "无"}`, "sys");
     }
-    if (dbg.read_sample) {
+    if (!silent && dbg.read_sample) {
       log(`  → READ 帧 ×${dbg.read_count} (寄存器 ${dbg.read_addr}) 示例: ${dbg.read_sample}`, "sys");
       log(`  ← READ 响应 ${dbg.read_response_hex ? dbg.read_response_hex.length / 2 + " 字节" : "无"}`, "sys");
     }
     if (d.error) {
-      setPoseBanner("danger", "读取失败", d.error);
-      log("姿态读取失败: " + d.error, "err");
-      return;
+      if (!silent) setPoseBanner("danger", "读取失败", d.error);
+      return { ok: false, error: d.error };
     }
     const safety = d.safety || {};
     renderPoseList(d.joints, safety);
     if (window.Pose3D) window.Pose3D.update(d.joints, d.zero_values);
     const lv = safety.level;
-    if (lv === "safe") {
-      setPoseBanner("safe", safety.level_text, `${safety.online_count}/${safety.total} 关节在线，均在安全范围`);
-      log("姿态安全：可以上电", "ok");
-    } else if (lv === "danger") {
-      setPoseBanner("danger", safety.level_text, safety.issues.join("；"));
-      log("姿态危险: " + safety.issues.join("；"), "err");
-    } else if (lv === "warn") {
-      setPoseBanner("warn", safety.level_text, safety.issues.join("；"));
-      log("姿态警告: " + safety.issues.join("；"), "warn");
-    } else {
-      setPoseBanner("warn", safety.level_text || "未知", "");
+    if (!silent) {
+      if (lv === "safe") {
+        setPoseBanner("safe", safety.level_text, `${safety.online_count}/${safety.total} 关节在线，均在安全范围`);
+        log("姿态安全：可以上电", "ok");
+      } else if (lv === "danger") {
+        setPoseBanner("danger", safety.level_text, safety.issues.join("；"));
+        log("姿态危险: " + safety.issues.join("；"), "err");
+      } else if (lv === "warn") {
+        setPoseBanner("warn", safety.level_text, safety.issues.join("；"));
+        log("姿态警告: " + safety.issues.join("；"), "warn");
+      } else {
+        setPoseBanner("warn", safety.level_text || "未知", "");
+      }
     }
+    return { ok: true, safety };
   } catch (e) {
-    setPoseBanner("danger", "读取失败", e.message);
-    log("姿态读取异常: " + e.message, "err");
+    if (!silent) {
+      setPoseBanner("danger", "读取失败", e.message);
+      log("姿态读取异常: " + e.message, "err");
+    }
+    return { ok: false, error: e.message };
   } finally {
     btn.disabled = false;
   }
+}
+
+// ---------- 实时姿态轮询（三档自适应） ----------
+let livePoseTimer = null;
+let livePoseOn = false;
+const LIVE_INTERVAL = 1000;   // 暂停/空闲：1 秒一次
+const LIVE_SLOW = 2500;       // 动作播放中：2.5 秒一次（避免抢 motion_main 串口）
+
+function toggleLivePose() {
+  livePoseOn = !livePoseOn;
+  const btn = $("btnLivePose");
+  if (livePoseOn) {
+    btn.classList.add("active");
+    $("livePoseDot").classList.add("on");
+    $("livePoseText").textContent = "实时中";
+    log("实时姿态已开启：空闲 1 秒/次，动作播放中自动 2.5 秒/次", "ok");
+    livePoseLoop();
+  } else {
+    btn.classList.remove("active");
+    btn.classList.remove("slow");
+    $("livePoseDot").classList.remove("on");
+    $("livePoseText").textContent = "实时";
+    if (livePoseTimer) { clearTimeout(livePoseTimer); livePoseTimer = null; }
+    log("实时姿态已关闭", "sys");
+  }
+}
+
+function livePoseLoop() {
+  if (!livePoseOn) return;
+  const playing = !!playingAction;
+  const btn = $("btnLivePose");
+  btn.classList.toggle("slow", playing);
+  const interval = playing ? LIVE_SLOW : LIVE_INTERVAL;
+  // 实时轮询：fast 模式（跳过 PING，SYNC_READ 快读）+ 静默（不刷日志）
+  readPose({ fast: true, silent: true }).finally(() => {
+    livePoseTimer = setTimeout(livePoseLoop, interval);
+  });
 }
 
 async function poseReset() {
@@ -681,18 +768,125 @@ async function poseReset() {
   } catch (e) { log("姿态复位失败: " + e.message, "err"); toast("复位失败"); }
 }
 
+// ---------- AI 对话（DeepSeek） ----------
+function addChatMsg(role, text, toolText) {
+  const box = $("chatBox");
+  const d = document.createElement("div");
+  d.className = "chat-msg " + (role === "user" ? "user" : "bot");
+  d.textContent = text;
+  if (toolText) {
+    const t = document.createElement("span");
+    t.className = "tool";
+    t.textContent = "⚙ " + toolText;
+    d.appendChild(t);
+  }
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+  return d;
+}
+
+async function sendChat() {
+  const input = $("chatInput");
+  const text = input.value.trim();
+  if (!text) return;
+  addChatMsg("user", text);
+  input.value = "";
+  const btn = $("btnSendChat");
+  btn.disabled = true;
+  const waiting = addChatMsg("bot", "…");
+  try {
+    const d = await api("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+    waiting.remove();
+    if (d.reply) {
+      addChatMsg("bot", d.reply, (d.tools && d.tools.length) ? d.tools.join("；") : "");
+      log("AI 回复: " + d.reply, "ok");
+    } else {
+      addChatMsg("bot", "(无回复)");
+      log("AI 无回复: " + (d.raw || ""), "warn");
+    }
+    if (d.tools && d.tools.length) {
+      for (const t of d.tools) log("机器人动作: " + t, "act");
+    }
+  } catch (e) {
+    waiting.remove();
+    addChatMsg("bot", "对话失败: " + e.message);
+    log("对话失败: " + e.message, "err");
+  } finally {
+    btn.disabled = false;
+    input.focus();
+  }
+}
+
+// 麦克风语音识别（浏览器 Web Speech API，识别成文字后填入输入框）
+let recognition = null, isRecording = false;
+function setupRecognition() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return false;
+  recognition = new SR();
+  recognition.lang = "zh-CN";
+  recognition.continuous = false;
+  recognition.interimResults = true;
+  recognition.onresult = (e) => {
+    let final = "", interim = "";
+    for (let i = 0; i < e.results.length; i++) {
+      const r = e.results[i];
+      if (r.isFinal) final += r[0].transcript;
+      else interim += r[0].transcript;
+    }
+    $("chatInput").value = final || interim;
+  };
+  recognition.onend = () => {
+    isRecording = false;
+    $("btnMic").classList.remove("recording");
+  };
+  recognition.onerror = (e) => {
+    isRecording = false;
+    $("btnMic").classList.remove("recording");
+    if (e.error === "not-allowed") { log("麦克风权限被拒绝，请在浏览器授权", "err"); toast("麦克风权限被拒绝"); }
+    else if (e.error !== "aborted") log("语音识别出错: " + e.error, "warn");
+  };
+  return true;
+}
+
+function toggleMic() {
+  if (!recognition && !setupRecognition()) {
+    log("当前浏览器不支持语音识别（需 Chrome/Edge）", "err");
+    toast("浏览器不支持语音识别");
+    return;
+  }
+  if (isRecording) {
+    recognition.stop();
+    return;
+  }
+  try {
+    recognition.start();
+    isRecording = true;
+    $("btnMic").classList.add("recording");
+    $("chatInput").placeholder = "正在聆听，请说话…";
+    toast("开始录音，请说话");
+    const origOnEnd = recognition.onend;
+    recognition.onend = () => { isRecording = false; $("btnMic").classList.remove("recording"); $("chatInput").placeholder = "输入指令，如「跳个科目三」…"; if (origOnEnd) origOnEnd(); };
+  } catch (e) {
+    log("启动语音识别失败: " + e.message, "err");
+  }
+}
+
 // ---------- 事件 ----------
 $("btnConnectBridge").addEventListener("click", connectBridge);
 $("btnRefresh").addEventListener("click", () => { connectBridge(); });
 $("btnReset").addEventListener("click", resetRobot);
 $("btnJointScan").addEventListener("click", scanJoints);
 $("btnJointDisable").addEventListener("click", () => toast("断电功能需串口空闲"));
-$("btnReadPose").addEventListener("click", readPose);
+$("btnReadPose").addEventListener("click", () => readPose({ fast: false, silent: false }));
+$("btnLivePose").addEventListener("click", toggleLivePose);
 $("btnPoseReset").addEventListener("click", poseReset);
 $("btnStandby").addEventListener("click", toggleStandby);
 $("btnClearLog").addEventListener("click", () => $("logBox").innerHTML = "");
 $("searchBox").addEventListener("input", renderMotions);
 $("bridgeUrl").addEventListener("keydown", e => { if (e.key === "Enter") connectBridge(); });
+$("btnSendChat").addEventListener("click", sendChat);
+$("chatInput").addEventListener("keydown", e => { if (e.key === "Enter") sendChat(); });
+$("btnMic").addEventListener("click", toggleMic);
 
 function setLed(id, on, err = false) { const d = $(id); d.classList.toggle("on", on && !err); d.classList.toggle("err", err); }
 

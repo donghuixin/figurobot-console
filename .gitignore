@@ -1,0 +1,20 @@
+# 敏感凭据（DeepSeek API key）
+config.json
+
+# 工作目录（记忆、日志、临时文件）
+.workbuddy/
+
+# 官方发货资料（非本项目代码，含云盘占位文件）
+发货资料分类_20260708/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 日志
+*.log
+
+# 系统
+.DS_Store
+Thumbs.db

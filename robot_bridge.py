@@ -27,6 +27,7 @@ import json
 import subprocess
 import sys
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 # ---------- 路径与设备 ----------
@@ -171,6 +172,13 @@ class Robot:
         self.adb = adb_path
         self.serial = serial
         self._lock = threading.Lock()
+        self._err_cache = {}      # {id: error_code}，PING 时更新，fast 读时复用
+        self._err_cache_ts = 0.0  # 缓存时间戳（用于判断是否过期）
+
+    def _cache_errs(self, err_by_id):
+        """更新 error_code 缓存（full 读时调用）。"""
+        self._err_cache = dict(err_by_id)
+        self._err_cache_ts = time.time()
 
     def _cmd(self, *args, timeout=10):
         base = [self.adb]
@@ -254,6 +262,34 @@ class Robot:
         r = self._socket_send(cmd)
         r.cmd = cmd
         return r
+
+    # ---- 语音助手（DeepSeek 对话，跑在控制盒 voice_agent） ----
+    def chat(self, text):
+        """调用控制盒 voice_agent 的单次对话，返回 {reply, tools}。
+
+        对话大脑（DeepSeek + 本地记忆库）跑在控制盒 /userdata/voice_agent/voice_agent.py。
+        文本用 base64 编码后作为参数传递，绕开 shell 引号/中文问题。
+        """
+        text_b64 = base64.b64encode(text.encode("utf-8")).decode("ascii")
+        py = (
+            "import base64,subprocess,sys;"
+            f"text=base64.b64decode('{text_b64}').decode('utf-8');"
+            "r=subprocess.run(['python3','/userdata/voice_agent/voice_agent.py',"
+            "'--once',text],capture_output=True,text=True,encoding='utf-8',"
+            "errors='replace',timeout=90);"
+            "sys.stdout.write(r.stdout);sys.stderr.write(r.stderr)"
+        )
+        b64 = base64.b64encode(py.encode("utf-8")).decode("ascii")
+        cmd = f"echo {b64} | base64 -d | python3"
+        r = self.shell(cmd, timeout=100)
+        out = (r.stdout or "").strip()
+        try:
+            data = json.loads(out)
+            if isinstance(data, dict) and "reply" in data:
+                return data
+        except Exception:
+            pass
+        return {"reply": "", "tools": [], "raw": out[:500]}
 
     def list_motions(self):
         r = self.shell("cat /sdcard/.config/Figurobot/data/motionList.json", timeout=8)
@@ -405,47 +441,83 @@ class Robot:
                 i += 1
         return frames
 
-    def read_pose(self):
+    def read_pose(self, fast=False):
         """读取全部关节当前位置。
 
-        策略：先 PING 所有 ID 拿 online + error_code，对在线 ID 逐个 READ Present Position。
-        （SYNC_READ 在 voltage error 等异常状态下不响应，必须用 PING+READ 组合。）
+        策略（fast=False，完整模式，约 2-3s）：
+          1. PING 所有 ID → 拿 online + error_code（更新缓存）。
+          2. SYNC_READ 一次广播读所有在线 ID 的 present_position（快路径）。
+          3. 对 SYNC_READ 没返回的在线 ID 逐个 READ 回退（兜底）。
+
+        策略（fast=True，实时轮询模式，约 0.7-0.9s）：
+          跳过 PING，直接 SYNC_READ 全部 ID 的位置；error_code 复用上次 PING 缓存。
         返回 {joints: {id: {raw, angle, online, error_code, error_text}}}
         """
-        # 第一步：逐个 PING 拿在线状态和错误码
-        ping_frames = [bytes(build_frame(i, CMD["PING"], [])).hex() for i in SERVO_IDS]
-        out = self._serial_exec(ping_frames, read_timeout=0.4)
-        hexstr = self._parse_hex(out)
-        if isinstance(hexstr, dict):
-            return {"error": hexstr.get("error", "serial error"), "joints": {},
-                    "_debug": {"ping_count": len(ping_frames),
-                               "ping_sample": ping_frames[0] if ping_frames else "",
-                               "ping_response_hex": "",
-                               "read_count": 0, "read_sample": "",
-                               "read_addr": "0x84 (Present Position, 4 bytes)",
-                               "read_response_hex": ""}}
-        ping_frames_parsed = self._parse_frames(hexstr)
-        online_ids = []
-        err_by_id = {}
-        for did, err, _ in ping_frames_parsed:
-            online_ids.append(did)
-            err_by_id[did] = err
-
-        # 第二步：逐个 READ Present Position（仅对在线的）
-        read_frames = []
-        id_order = []
-        for sid in SERVO_IDS:
-            if sid in online_ids:
-                read_frames.append(bytes(build_read(sid, ADDR["present_position"], POSITION_LENGTH)).hex())
-                id_order.append(sid)
-        # 一些舵机在 error 状态时不会响应 READ，单独处理：尝试读，失败就保留 error 信息
         pos_by_id = {}
-        hexstr2 = ""
-        if read_frames:
-            out = self._serial_exec(read_frames, read_timeout=0.4)
-            hexstr2 = self._parse_hex(out)
+        read_count = 0
+        read_sample = ""
+        read_response_hex = ""
+        ping_count = 0
+        ping_sample = ""
+        ping_response_hex = ""
+        err_by_id = {}
+
+        # fast 模式但缓存为空时，降级为完整读（保证首次能拿到 error_code 和在线列表）
+        if fast and not self._err_cache:
+            fast = False
+
+        # 第一步（完整模式）：逐个 PING 拿在线状态和错误码
+        online_ids = list(SERVO_IDS)
+        if not fast:
+            ping_frames = [bytes(build_frame(i, CMD["PING"], [])).hex() for i in SERVO_IDS]
+            ping_count = len(ping_frames)
+            ping_sample = ping_frames[0] if ping_frames else ""
+            out = self._serial_exec(ping_frames, read_timeout=0.4)
+            hexstr = self._parse_hex(out)
+            if isinstance(hexstr, dict):
+                return {"error": hexstr.get("error", "serial error"), "joints": {},
+                        "_debug": {"ping_count": ping_count, "ping_sample": ping_sample,
+                                   "ping_response_hex": "", "read_count": 0,
+                                   "read_sample": "", "read_addr": "0x84 (Present Position, 4 bytes)",
+                                   "read_response_hex": ""}}
+            ping_response_hex = hexstr if isinstance(hexstr, str) else ""
+            ping_frames_parsed = self._parse_frames(hexstr)
+            online_ids = []
+            for did, err, _ in ping_frames_parsed:
+                online_ids.append(did)
+                err_by_id[did] = err
+            self._cache_errs(err_by_id)
+        else:
+            # fast 模式：复用缓存，在线集合 = 上次 PING 在线的 ID
+            err_by_id = dict(self._err_cache)
+            online_ids = list(self._err_cache.keys())
+
+        # 第二步：SYNC_READ 广播读所有在线 ID 的位置（1 帧完成）
+        sync_ids = sorted(set(online_ids) & set(SERVO_IDS))
+        if sync_ids:
+            sync_frame = bytes(build_sync_read(sync_ids, ADDR["present_position"], POSITION_LENGTH)).hex()
+            read_sample = sync_frame
+            read_count += 1
+            out2 = self._serial_exec([sync_frame], read_timeout=0.25)
+            hexstr2 = self._parse_hex(out2)
             if not isinstance(hexstr2, dict):
+                read_response_hex = hexstr2 if isinstance(hexstr2, str) else ""
                 for did, err, data in self._parse_frames(hexstr2):
+                    if len(data) >= POSITION_LENGTH:
+                        raw = data[0] | (data[1] << 8) | (data[2] << 16) | (data[3] << 24)
+                        pos_by_id[did] = raw
+
+        # 第三步：对 SYNC_READ 没返回的在线 ID 逐个 READ 回退（兜底）
+        missed = [sid for sid in online_ids if sid not in pos_by_id]
+        if missed:
+            fallback_frames = [bytes(build_read(sid, ADDR["present_position"], POSITION_LENGTH)).hex()
+                               for sid in missed]
+            read_count += len(fallback_frames)
+            out3 = self._serial_exec(fallback_frames, read_timeout=0.25)
+            hexstr3 = self._parse_hex(out3)
+            if not isinstance(hexstr3, dict):
+                read_response_hex += hexstr3 if isinstance(hexstr3, str) else ""
+                for did, err, data in self._parse_frames(hexstr3):
                     if len(data) >= POSITION_LENGTH:
                         raw = data[0] | (data[1] << 8) | (data[2] << 16) | (data[3] << 24)
                         pos_by_id[did] = raw
@@ -454,13 +526,15 @@ class Robot:
         result = {"joints": {}}
         # 附加「发出的指令」和「机器反馈」用于前端日志打印
         result["_debug"] = {
-            "ping_count": len(ping_frames),
-            "ping_sample": ping_frames[0] if ping_frames else "",
-            "ping_response_hex": hexstr if isinstance(hexstr, str) else "",
-            "read_count": len(read_frames),
-            "read_sample": read_frames[0] if read_frames else "",
+            "ping_count": ping_count,
+            "ping_sample": ping_sample,
+            "ping_response_hex": ping_response_hex,
+            "read_count": read_count,
+            "read_sample": read_sample,
             "read_addr": "0x84 (Present Position, 4 bytes)",
-            "read_response_hex": hexstr2 if isinstance(hexstr2, str) else "",
+            "read_response_hex": read_response_hex,
+            "sync_read_ok": len(pos_by_id),
+            "fast": fast,
         }
         for sid in SERVO_IDS:
             if sid in online_ids:
@@ -686,7 +760,8 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 self._json({"ok": True, "raw": res["raw"], "sent_frames": res.get("sent_frames", [])})
         elif path == "/api/pose":
-            pose = self.robot.read_pose()
+            fast = bool(body.get("fast", False))
+            pose = self.robot.read_pose(fast=fast)
             dbg = (pose.pop("_debug", {}) if isinstance(pose, dict) else {})
             if "error" in pose and not pose.get("joints"):
                 self._json({"error": pose["error"], "joints": {}, "safety": None,
@@ -707,6 +782,14 @@ class Handler(BaseHTTPRequestHandler):
                         % target)
             self._json({"ok": ok, "quiet": quiet, "idle_interval": target, "output": out,
                         "command": cmd_desc})
+        elif path == "/api/chat":
+            text = (body.get("text") or "").strip()
+            if not text:
+                return self._json({"error": "缺少 text"}, 400)
+            result = self.robot.chat(text)
+            self._json({"ok": True, "text": text, "reply": result.get("reply", ""),
+                        "tools": result.get("tools", []),
+                        "tts_error": result.get("tts_error", "")})
         else:
             self._json({"error": "not found"}, 404)
 
