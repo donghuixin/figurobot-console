@@ -763,16 +763,27 @@ class Handler(BaseHTTPRequestHandler):
             dev_id = int(body.get("id", 0))
             pos = int(body.get("position", 0))
             res = self.robot.joint_write(dev_id, pos)
-            self._json({"ok": True, "id": dev_id, "position": pos, "raw": res})
+            if isinstance(res, dict) and res.get("error"):
+                self._json({"ok": False, "id": dev_id, "position": pos,
+                            "error": res["error"], "raw": ""})
+            else:
+                self._json({"ok": True, "id": dev_id, "position": pos, "raw": res})
         elif path == "/api/joint/read":
             dev_id = int(body.get("id", 0))
             res = self.robot.joint_read(dev_id)
-            self._json({"ok": True, "id": dev_id, "raw": res})
+            if isinstance(res, dict) and res.get("error"):
+                self._json({"ok": False, "id": dev_id, "error": res["error"], "raw": ""})
+            else:
+                self._json({"ok": True, "id": dev_id, "raw": res})
         elif path == "/api/joint/enable":
             dev_id = int(body.get("id", 0))
             enable = bool(body.get("enable", True))
             res = self.robot.joint_enable(dev_id, enable)
-            self._json({"ok": True, "id": dev_id, "enable": enable, "raw": res})
+            if isinstance(res, dict) and res.get("error"):
+                self._json({"ok": False, "id": dev_id, "enable": enable,
+                            "error": res["error"], "raw": ""})
+            else:
+                self._json({"ok": True, "id": dev_id, "enable": enable, "raw": res})
         elif path == "/api/joint/scan":
             res = self.robot.joint_scan(int(body.get("start", 1)), int(body.get("end", 32)))
             if isinstance(res, dict) and "error" in res:

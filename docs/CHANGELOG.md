@@ -1,5 +1,27 @@
 # 变更日志
 
+## 2026-08-20
+
+### 问题排查与修复
+
+#### 1. 舵机总线全离线 + 左臂异常（交接文档见 `INCIDENT_2026-08-20_servo_bus_offline.md`）
+
+**现象**：控制台连不上机器人，27 个舵机 PING 全无响应，左臂无力下垂。
+
+**排查**：软件层逐项确认正常——ADB 在线、桥接 connected、motion_main 健康（62 fd）、串口节点无漂移、磁盘 58%、STM32 电池 HIGH/硬件 READY。重启 motion_main 后仍 0 在线。
+
+**结论**：舵机总线层面物理/供电故障（力矩供电掉电或总线/线缆断开），非软件问题。建议彻底断电重启。
+
+#### 2. 关节控制接口错误处理增强
+
+- `robot_bridge.py`：`/api/joint/write|read|enable` 在串口失败时返回 `{ok:false, error}`，而非静默 `ok:true`。
+- `figurobot-console.html`：`api()` 统一解析 JSON 错误信息（`data.error || data.message`），报错更明确。
+
+### 遗留问题
+
+1. ticos_client WebSocket 每 ~3s 重连（fd 泄漏源未根治，靠 LimitNOFILE=65535 兜底）。
+2. 摄像头周期报 `CAMERA_ERROR`（rkisp sensor 未激活）。
+
 ## 2026-08-18
 
 ### 新增功能

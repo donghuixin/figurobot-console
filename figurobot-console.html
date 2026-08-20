@@ -644,8 +644,13 @@ function categorize(name) {
 // ---------- API ----------
 async function api(path, opts) {
   const r = await fetch(API + path, opts);
-  if (!r.ok) throw new Error("HTTP " + r.status);
-  return r.json();
+  let data = null;
+  try { data = await r.json(); } catch { data = null; }
+  if (!r.ok) {
+    const msg = (data && (data.error || data.message)) || ("HTTP " + r.status);
+    throw new Error(msg);
+  }
+  return data;
 }
 
 async function connectBridge() {
